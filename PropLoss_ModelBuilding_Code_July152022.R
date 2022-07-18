@@ -8,7 +8,8 @@ library(DHARMa)
 library(ggpubr)
 
 # Prep Rungan Data
-RunganModelingData <- read.csv('observed.prop.lossRunganJuly152022.csv')
+RunganModelingData <- read.csv('observed.prop.lossRunganJuly18.csv')
+
 
 # Focus only on primates
 observed.prop.lossRunganSubset <- droplevels(subset(RunganModelingData,
@@ -262,7 +263,11 @@ plot.prop.loss <- ggboxplot(data=typical.pulses,x = 'Call.Type', y = 'Prop.Loss'
 
 
 
-# 3. estimate detection distances -----------------------------------------
+# 3. Boxplots of magic x -----------------------------------------
+head(PropogationLossModelingDF)
+
+ggpubr::ggboxplot(data=PropogationLossModelingDF,
+                  x='Call.category',y='magic.x',fill='habitat' )+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
-
+table(PropogationLossModelingDF$site,PropogationLossModelingDF$TimeCat)

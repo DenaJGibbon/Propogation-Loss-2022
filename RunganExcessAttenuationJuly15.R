@@ -45,6 +45,7 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
   # Subset data frame to focus on unique date/time
   temp.playback <- subset(RunganDF,Loc_Name==Loc_Name.index[z])
   
+  
   # Create an index for each unique file in the playback
   SelectionIndex <- (SelectionIDs$Sound.Type)
   
@@ -162,6 +163,9 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
 #}, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
   
 }
+
+unique(observed.prop.lossRungan$Loc_Name)
+table(observed.prop.lossRungan$time)
 
 # Remove PBs
 observed.prop.lossRungan <- droplevels(subset(observed.prop.lossRungan,playback.num!=1))
