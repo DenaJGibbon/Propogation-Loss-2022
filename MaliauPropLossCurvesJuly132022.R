@@ -16,7 +16,7 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedMaliauJuly2022.csv")
+MaliauDF <- read.csv("BackgroundNoiseRemovedMaliauJuly2022.csv")
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
@@ -188,10 +188,10 @@ observed.prop.lossMaliauGibbons <- subset(observed.prop.lossMaliau,Call.category
                                             Call.category=="Halbstart" |Call.category=="Halbpeak" )
 
 uniquegibbons <- unique(observed.prop.lossMaliauGibbons$Call.category)
-gibbondB <- 113
+gibbondB <- 100
 
 
-for(d in 1:length(uniquegibbons)){
+for(d in 1:1){
   
   observed.prop.lossMaliaugibbonstemp <- subset(observed.prop.lossMaliauGibbons,Call.category==uniquegibbons[d])
   
@@ -241,9 +241,42 @@ for(d in 1:length(uniquegibbons)){
     geom_ribbon(aes(ymin = lower.cigibbon, ymax = upper.cigibbon), alpha = 0.25)+
     geom_hline(yintercept=noise.val,linetype="dashed", color = "black")+
     theme(axis.text=element_text(size=12), axis.title=element_text(size=12,face="bold"))+
-    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Maliau',uniquegibbons[d]))+
+    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Maliau',uniquegibbons[d], '100 dB @ 1 m Source level'))+
     ylim(25,125)
   print(gibbonplot)
 }
+
+
+# Plot for ABS conference -------------------------------------------------
+
+# Set the equations for observed, spherical and cylindrical spreading
+eq1 <- function(x){ -25*log10(x)}
+eq2 <- function(x){ -20*log10(x)}
+eq3 <- function(x){ -10*log10(x)}
+
+# Create a series of points based on the above equations
+Estimated1 <- cbind.data.frame(seq(1:500),eq1(1:500),rep('Estimated',500))
+colnames(Estimated1) <- c("X","Value","Label")
+Spherical <- cbind.data.frame(seq(1:500),eq2(1:500),rep('Spherical',500))
+colnames(Spherical) <- c("X","Value","Label")
+Cylindrical <-  cbind.data.frame(seq(1:500),eq3(1:500),rep('Cylindrical',500))
+colnames(Cylindrical) <- c("X","Value","Label")
+
+# Combine all three into a single dataframe
+attenuation.df <- rbind.data.frame(Estimated1,Spherical)
+
+# Convert to reasonable starting value
+attenuation.df$Value <-  attenuation.df$Value+110
+
+# Plot the results
+ggplot(data = attenuation.df,aes(x=X, y=Value,group=Label, colour=Label,linetype=Label))+
+  geom_line() +theme_bw() + scale_color_manual(values = c("red","black","darkgray"))+
+  theme(legend.title = element_blank())+ 
+  scale_linetype_manual(values=c( "solid","twodash", "dotted"))+
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12,face="bold"))+
+  xlab("Distance from source (m)") + ylab("Amplitude (dB)")+
+  geom_hline(yintercept=45,color='blue')+
+  # ylim(-120,0)+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 

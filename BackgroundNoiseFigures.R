@@ -1,3 +1,5 @@
+# Notes to Dena: Need to add time categories
+
 # Noise plots
 library(ggpubr)
 library(stringr)
@@ -60,7 +62,8 @@ ggplot(RunganNoiseMedian,aes(center.freq,ambient.noise,
   geom_ribbon(data=RunganNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
                                          ,fill=time,group=time,color=NULL),alpha=0.5)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(RunganNoiseMedian$time))) )+ theme_bw()+
-  facet_grid(. ~ habitat)#+ylim(25,70)
+  scale_color_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ theme_bw()#+ylim(25,70)
+#+ylim(25,70)
 
 table(RunganNoiseMedian$time)
 
@@ -86,7 +89,8 @@ MaliauNoisePlot <- ggplot(MaliauNoiseMedian,aes(center.freq,ambient.noise,
   stat_summary(data=MaliauNoiseMedian,fun.y=meandB,geom="line",aes(group=time))+
   geom_ribbon(data=MaliauNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
                                   ,fill=time,group=time,color=NULL),alpha=0.5)+ 
-  scale_fill_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ theme_bw()#+ylim(25,70)
+  scale_fill_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ 
+  scale_color_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ theme_bw()#+ylim(25,70)
 
 cowplot::plot_grid(RunganNoisePlot,MaliauNoisePlot)
 
@@ -98,15 +102,42 @@ CombinedNoise <-
   rbind.data.frame(RunganNoiseAddHabitat,MaliauNoise)
 
 CombinedNoiseMedian <- CombinedNoise %>%
-  group_by(habitat,time,center.freq) %>%
+  group_by(habitat,center.freq) %>%
   summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
             ambient.noise.low=meandB(noise.valuedb)-se(noise.valuedb),
             ambient.noise=meandB(noise.valuedb))
 
+
+
 # Drop missing habitat
 CombinedNoiseMedian <- subset(CombinedNoiseMedian,habitat=='D'|habitat=='K'| habitat=='LP' | habitat=='MS')
 
-CombinedNoiseMedian$time <- as.numeric(CombinedNoiseMedian$time)
+
+ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
+                                                group=habitat,colour=habitat,linetype=habitat))+
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=habitat))+
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
+  geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
+                                         ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
+  scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
+  scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
+  theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+xlab('Center Frequency (Hz)') #+ylim(25,70)
+
+ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
+                               group=habitat,colour=habitat,linetype=habitat))+
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=habitat))+
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
+  geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
+                                           ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
+  scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
+  scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
+  theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
+  xlab('Center Frequency (Hz)')+xlim(0,2000)+ylim(25,45)
+
+      
+                  
+
+#CombinedNoiseMedian$time <- as.numeric(CombinedNoiseMedian$time)
 
 ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
                                group=habitat,colour=habitat,linetype=habitat))+
@@ -116,14 +147,16 @@ ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
                                            ,fill=habitat,group=habitat,color=NULL),alpha=0.25)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoiseMedian$habitat))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoiseMedian$habitat))) )+ 
-  theme_bw()
+  theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
+  xlab('Center Frequency (Hz)')
 
 ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
-                             group=habitat,colour=habitat,linetype=habitat))+
+                               group=habitat,colour=habitat,linetype=habitat))+
   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=habitat))+
   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
   geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-                                         ,fill=habitat,group=habitat,color=NULL),alpha=0.25)+ 
+                                           ,fill=habitat,group=habitat,color=NULL),alpha=0.25)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoiseMedian$habitat))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoiseMedian$habitat))) )+ 
-  facet_wrap(. ~ time,ncol=3)+theme_bw()+xlim(0,2000)+ylim(20,50)
+  theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
+  xlab('Center Frequency (Hz)')+xlim(0,2000)+ylim(25,45)
