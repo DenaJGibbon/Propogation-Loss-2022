@@ -22,7 +22,12 @@ observed.prop.lossRunganSubset <- droplevels(subset(RunganModelingData,
                                            Call.category=="PwurP" |
                                            Call.category=="PwurS" ))
 
-
+observed.prop.lossRunganSubset$Call.category <- 
+  recode(observed.prop.lossRunganSubset$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangEKalimantan',
+         PwurS='OrangEKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
+  
+  
 # Add time category
 RunganTimeCats <- read.csv('Rungan_playbackNo_timeCat.csv')
 
@@ -42,6 +47,7 @@ observed.prop.lossRunganSubset$distance <- log10(observed.prop.lossRunganSubset$
 # Prep Maliau Data
 MaliauModelingData <- read.csv('observed.prop.lossMaliau.csv')
 
+
 # Focus only on primates
 observed.prop.lossMaliauSubset <- droplevels(subset(MaliauModelingData,
                                                     Call.category=="Hfunstart" |
@@ -51,6 +57,10 @@ observed.prop.lossMaliauSubset <- droplevels(subset(MaliauModelingData,
                                                       Call.category=="Halbend" |
                                                       Call.category=="Pmor"))
 
+observed.prop.lossMaliauSubset$Call.category <- 
+  recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangEKalimantan',
+         PwurS='OrangEKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
 # Add time category from 'TimeCategories-Maliau-Rungan.csv'
 observed.prop.lossMaliauSubset$time <- as.factor(observed.prop.lossMaliauSubset$time)
@@ -84,7 +94,6 @@ observed.prop.lossMaliauSubset$distance <- as.factor(observed.prop.lossMaliauSub
 levels(observed.prop.lossMaliauSubset$distance) <- c("50", "100","150","200",'250','300','350')
 observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop.lossMaliauSubset$distance))
 
-observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
 
 
 ### Z scaling frequency & distance data??
@@ -130,6 +139,18 @@ ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
 
 
 observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,magic.x >= -50 & magic.x <= -10)
+observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, distance > 150)
+
+observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
+                                         time==600| time==800|time==1000|time==1600 )
+
+observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
+
+ggboxplot(data=observed.prop.lossMaliauSubset,
+          y='actual.receive.level', x='Call.category')
+
+ggboxplot(data=observed.prop.lossMaliauSubset,
+          y='magic.x', x='Call.category')
 
 #observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time==600 |time==800 |time==800 |time==1000| time==1600 )
 
@@ -168,6 +189,11 @@ observed.prop.lossRunganSubset <- droplevels(subset(RunganModelingData,
                                                       Call.category=="Pmor" ))
 
 
+observed.prop.lossRunganSubset$Call.category <- 
+  recode(observed.prop.lossRunganSubset$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangEKalimantan',
+         PwurS='OrangEKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
+
 # Add time category
 RunganTimeCats <- read.csv('Rungan_playbackNo_timeCat.csv')
 
@@ -196,6 +222,11 @@ observed.prop.lossMaliauSubset <- droplevels(subset(MaliauModelingData,
                                                       Call.category=="Halbend" |
                                                       Call.category=="Pmor" ))
 
+
+observed.prop.lossMaliauSubset$Call.category <- 
+  recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangEKalimantan',
+         PwurS='OrangEKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
 # Add time category from 'TimeCategories-Maliau-Rungan.csv'
 observed.prop.lossMaliauSubset$time <- as.factor(observed.prop.lossMaliauSubset$time)
@@ -229,6 +260,8 @@ observed.prop.lossMaliauSubset$distance <- as.factor(observed.prop.lossMaliauSub
 levels(observed.prop.lossMaliauSubset$distance) <- c("50", "100","150","200",'250','300','350')
 observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop.lossMaliauSubset$distance))
 observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,magic.x >= -45 & magic.x <= -15)
+observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
+                                         time==600| time==800|time==1000|time==1600 )
 
 # Combine Rungan and Maliau data for modelling
 
@@ -275,10 +308,11 @@ bbmle::AICctab(Combined.lmm.prop.loss.null,Combined.lmm.prop.loss.full,
                Combined.lmm.prop.loss.notime,Combined.lmm.prop.loss.nohabitat,Combined.lmm.prop.loss.nodistance, weights=T)
 
 
-summary(lmm.prop.loss.full)
-sjPlot::plot_model(lmm.prop.loss.full,intercept=F,sort.est = TRUE)+ggtitle('All sites model coefficients')+theme_bw()+geom_hline(yintercept=0)
 
-ggboxplot(data=PropogationLossModelingDFCompDist,x='Call.category',y='magic.x',fill ='habitat' )
+sjPlot::plot_model(Combined.lmm.prop.loss.full,intercept=F,sort.est = TRUE)+ggtitle('All sites model coefficients')+theme_bw()+geom_hline(yintercept=0)
+
+ggboxplot(data=PropogationLossModelingDFCompDist,x='Call.category',y='magic.x',fill ='habitat',
+          outlier.shape = NA)+ylab('Propagation loss')
 
 plot(lmm.prop.loss.full)
 
@@ -316,41 +350,52 @@ table(PropogationLossModelingDF$site,PropogationLossModelingDF$TimeCat)
 
 
 # Boxplots of detection range ---------------------------------------------
-gibbondB <- 100
+sourcelevels <- c(90, 100)
 
 detectionrange.df <- data.frame()
 
 for(a in 1:nrow(PropogationLossModelingDFCompDist)){
+  for(b in 1:length(sourcelevels)){
   TempRow <- PropogationLossModelingDFCompDist[a,]
+  Subsetformedianbackground <- subset(PropogationLossModelingDFCompDist, site==TempRow$site & Call.category==TempRow$Call.category)
+ 
   TempMagic.x <- TempRow$magic.x
-  Temp.background <- TempRow$noise.level
-  print(TempRow[a,]$noise.level)
+  Temp.background <-  median(Subsetformedianbackground$noise.level)
   if(is.na(Temp.background)==F){
   # Set the equations for observed, spherical and cylindrical spreading
   eq1 <- function(x){ TempMagic.x*log10(x)}
   
-  Estimated1 <- cbind.data.frame(seq(1:1000),eq1(1:1000),rep('Estimated',1000))
+  Estimated1 <- cbind.data.frame(seq(1:2000),eq1(1:2000),rep('Estimated',2000))
   colnames(Estimated1) <- c("X","Value","Label")
   
   Estimated1$X <- Estimated1$X -1
   
+  gibbondB <- sourcelevels[b]
   scaledB <- gibbondB - Estimated1$Value[2] 
   Estimated1$Value <- scaledB+Estimated1$Value
   
   TempRow$detect.distance <- 
     which(abs(Estimated1$Value - Temp.background) == min(abs(Estimated1$Value - Temp.background)))
   
+  TempRow$gibbondB <- gibbondB
   
   detectionrange.df <- rbind.data.frame(detectionrange.df,TempRow)
+  }
   }
 }
 
 
 detectionrange.df.rungan <- subset(detectionrange.df,site=='Rungan')
 ggboxplot(data=detectionrange.df.rungan,x='Call.category',y='detect.distance',
-          fill = 'Call.category')+ylab('Detection Range (m)')+ggtitle('Rungan')
+          fill = 'Call.category',facet.by = 'gibbondB',outlier.shape =NA)+ylab('Detection Range (m)')+ggtitle('Rungan')
 
 detectionrange.df.maliau <- subset(detectionrange.df,site=='Maliau')
 ggboxplot(data=detectionrange.df.maliau,x='Call.category',y='detect.distance',
-          fill = 'Call.category')+ylab('Detection Range (m)')+ggtitle('Maliau')
+          fill = 'Call.category',facet.by = 'gibbondB',outlier.shape =NA)+ylab('Detection Range (m)')+ggtitle('Maliau')
 
+#### Recorder noise check
+TempPlayback <- subset(observed.prop.lossMaliauSubset,playback.num=="20190823_1000")
+
+ggboxplot(data=TempPlayback,x='distance',y='noise.level',facet.by = 'Call.category')       
+       
+       

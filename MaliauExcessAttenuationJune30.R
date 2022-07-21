@@ -1,3 +1,5 @@
+library(XML)
+
 # Playback template table
 SelectionIDsMaliau <- 
   read.delim("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/SelectionLabels_S00974_20190811_101922_updated.txt")
@@ -13,7 +15,7 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedMaliauJuly2022.csv")
+MaliauDF <- read.csv("BackgroundNoiseRemovedMaliauJuly2022.csv")
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
@@ -28,7 +30,8 @@ MaliauDF <- subset(MaliauDF, time!=1520)
 unique(MaliauDF$time)
 
 # Read in GPS data
-recorder.gps <- plotKML::readGPX("/Users/denaclink/Downloads/MB Playbacks 50 m.GPX") 
+source('readGPX.R')
+recorder.gps <- readGPX("/Users/denaclink/Downloads/MB Playbacks 50 m.GPX") 
 
 
 # Convert name so that it matches dataframe
@@ -51,7 +54,7 @@ rownames(dist.mat) <- c(as.character(small.gps.df$recorder))
 # Check output
 dput((dist.mat+17)[,1])
 
-dist.to.playback.maliau <- 17.2
+dist.to.playback.maliau <- 26.4
 
 # Create an index with unique date/time combinations
 date.time.combo <- paste(MaliauDF$date,MaliauDF$time,sep='_')
@@ -163,7 +166,7 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
       observed.prop.lossMaliau <- rbind.data.frame(observed.prop.lossMaliau,temp.df)
       
     }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
-      DoublingDistanceDF <- rbind.data.frame(DoublingDistanceDF,DoublingDistanceDFtemp)
+    #  DoublingDistanceDF <- rbind.data.frame(DoublingDistanceDF,DoublingDistanceDFtemp)
     }
     
   }

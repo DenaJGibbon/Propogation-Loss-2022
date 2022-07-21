@@ -187,11 +187,13 @@ observed.prop.lossMaliau$distance <- round(observed.prop.lossMaliau$distance,0)
 observed.prop.lossMaliauGibbons <- subset(observed.prop.lossMaliau,Call.category=="Hfunstart" |Call.category=="Hfuntrill" |
                                             Call.category=="Halbstart" |Call.category=="Halbpeak" )
 
+observed.prop.lossMaliauGibbons <- subset(observed.prop.lossMaliauGibbons,distance > 100)
+
 uniquegibbons <- unique(observed.prop.lossMaliauGibbons$Call.category)
-gibbondB <- 100
+gibbondB <- 113
 
 
-for(d in 1:1){
+for(d in 1:length(uniquegibbons)){
   
   observed.prop.lossMaliaugibbonstemp <- subset(observed.prop.lossMaliauGibbons,Call.category==uniquegibbons[d])
   

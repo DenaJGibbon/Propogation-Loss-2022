@@ -15,6 +15,7 @@ library(multcomp)
 library(grid)
 library(reshape2)
 library(plyr)
+library(lme4)
 
 #standard error function
 se <- function(x) sqrt(var(x,na.rm=TRUE)/length(na.omit(x)))
@@ -55,7 +56,7 @@ RunganNoiseMedian <- subset(RunganNoiseMedian,habitat=='K'| habitat=='LP' | habi
 RunganNoiseMedian$time <- as.factor(RunganNoiseMedian$time)
 RunganNoiseMedian$time <- as.factor(RunganNoiseMedian$time)
 
-ggplot(RunganNoiseMedian,aes(center.freq,ambient.noise,
+RunganNoisePlot <- ggplot(RunganNoiseMedian,aes(center.freq,ambient.noise,
                        group=time,colour=time,linetype=time))+
   stat_summary(data=RunganNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=time))+
   stat_summary(data=RunganNoiseMedian,fun.y=meandB,geom="line",aes(group=time))+
@@ -73,6 +74,11 @@ MaliauNoise <-
 MaliauNoise$time <- str_split_fixed(MaliauNoise$wav.file,pattern='_',n=3)[,3]
 MaliauNoise$time <- as.numeric(substr(MaliauNoise$time,1,2))
 
+recorders <- str_split_fixed(MaliauNoise$wav.file,pattern = '_',n=3)[,1]
+
+# Remove close weird ones
+MaliauNoise <-
+  MaliauNoise[-which(recorders=='M1' |recorders=='M2' | recorders=='M3'  ),]
 
 MaliauNoiseMedian <- MaliauNoise %>%
   group_by(time,center.freq) %>%
@@ -160,3 +166,47 @@ ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoiseMedian$habitat))) )+ 
   theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
   xlab('Center Frequency (Hz)')+xlim(0,2000)+ylim(25,45)
+
+
+
+# Model selection ---------------------------------------------------------
+CombinedNoiseSub <- subset(CombinedNoise,center.freq > 250 & center.freq < 2000)
+CombinedNoiseSub <- subset(CombinedNoiseSub,habitat=='D'|habitat=='K'| habitat=='LP' | habitat=='MS')
+
+CombinedNoiseMedian <- CombinedNoiseSub %>%
+  group_by(habitat,center.freq,time) %>%
+  summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
+            ambient.noise.low=meandB(noise.valuedb)-se(noise.valuedb),
+            ambient.noise=meandB(noise.valuedb))
+
+
+CombinedNoiseMedian$TimeCat <- recode(CombinedNoiseMedian$time, '16' = "Afternoon",
+                                      '10'="Morning",'11'='Morning','13'="Afternoon",
+                                      '14'="Afternoon",'15'="Afternoon",'6'='Morning',
+                                      '7'='Morning','8'='Morning','9'='Morning')
+
+CombinedNoiseMedian$Site <- recode(CombinedNoiseMedian$habitat, 'K' = "Rungan",
+                                      'LP'="Rungan",'MS'='Rungan','D'="Maliau")
+
+CombinedNoiseMedian$center.freq <- as.factor(CombinedNoiseMedian$center.freq)
+
+Combined.lmerm.prop.loss.null <- lmer(ambient.noise ~  (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.center.freq <- lmer(ambient.noise ~  center.freq + (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.habitat <- lmer(ambient.noise ~  habitat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.time <- lmer(ambient.noise ~  TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.full <- lmer(ambient.noise ~  center.freq + habitat+ TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.nocenterfreq <- lmer(ambient.noise ~  habitat+ TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.interaction <- lmer(ambient.noise ~  habitat*TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+
+sjPlot::plot_model(Combined.lmerm.prop.loss.interaction,intercept=F)+ggtitle('Ambient noise model coefficents')+theme_bw()+
+  geom_hline(yintercept = 0,linetype='dashed')
+
+bbmle::AICctab(Combined.lmerm.prop.loss.null,Combined.lmerm.prop.loss.center.freq,
+               Combined.lmerm.prop.habitat,Combined.lmerm.prop.time,Combined.lmerm.prop.loss.full,Combined.lmerm.prop.loss.nocenterfreq,
+               Combined.lmerm.prop.loss.interaction,weights=T)
+
+
+
+ggboxplot(data=CombinedNoiseMedian,x='center.freq',y='ambient.noise',
+          facet_by='TimeCat',fill = 'habitat')
+
