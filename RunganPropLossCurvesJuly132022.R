@@ -9,7 +9,7 @@ library(tidyverse)
 dist.to.playback <- 10
 
 SelectionIDs <- 
-  read.delim("SelectionLabels_S00974_20190811_101922_updated.txt")
+  read.delim("Playbacks_Selections_Template_Updated_CKaliOrangFundamental.txt")
 
 #NOTE that there are two Pwur call types
 RunganDF <- read.csv('BackgroundNoiseRemovedDFRunganJuly2022.csv')
@@ -83,6 +83,8 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
     small.sample.playback.test <-  arrange(small.sample.playback.test, distance.from.source)  
     
     # Create a new column with receive levels standardized so the closest recorder is 0
+    
+    # This is essentially RL-SL in the prop loss equation
     small.sample.playback.test$PowerDb.zero <- 
       small.sample.playback.test$PowerDb-small.sample.playback.test$PowerDb[1]
     
@@ -101,10 +103,7 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
       
       # Assign the actual receive level (not zeroed) to new variable
       actual.receive.level <- temp.recorder.received$PowerDb
-      if(length(actual.receive.level)==0){
-        print( small.sample.playback.test$Sound.Type[1] )
-      }
-      
+     
       # Assign zeroed receive level to new variable 
       zero.receive.level <- temp.recorder.received$PowerDb.zero
       
@@ -128,7 +127,8 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
       # Calculate the distance ratio for propagation loss equation
       dist.ratio <- log10(distance/dist.to.playback)
       
-      # Calculate the 'magic x'
+      # Calculate the 'magic x' or propagation 
+      # (RL - SL) / log10(r)
       magic.x <-  zero.receive.level /dist.ratio
       
       # dB per doubling distance
@@ -171,6 +171,11 @@ observed.prop.lossRungan$Call.category <- str_split_fixed(observed.prop.lossRung
 
 observed.prop.lossRunganGibbons <- subset(observed.prop.lossRungan,Call.category=="Hfunstart" |Call.category=="Hfuntrill" |
                                            Call.category=="Halbstart" |Call.category=="Halbpeak" )
+
+
+observed.prop.lossRunganGibbons$Call.category <- 
+  recode(observed.prop.lossRunganGibbons$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
 observed.prop.lossRunganGibbons <- subset(observed.prop.lossRunganGibbons,distance<500)
 uniquegibbons <- unique(observed.prop.lossRunganGibbons$Call.category)
@@ -227,7 +232,7 @@ for(d in 1:length(uniquegibbons)){
     geom_ribbon(aes(ymin = lower.cigibbon, ymax = upper.cigibbon), alpha = 0.25)+
     geom_hline(yintercept=noise.val,linetype="dashed", color = "black")+
     theme(axis.text=element_text(size=12), axis.title=element_text(size=12,face="bold"))+
-    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Rungan',uniquegibbons[d]))+ylim(25,125)
+    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Rungan',uniquegibbons[d], gibbondB, 'dB @ 1 m Source level'))+ylim(25,125)
   print(gibbonplot)
 }
 

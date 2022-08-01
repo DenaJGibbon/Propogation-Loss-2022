@@ -9,7 +9,7 @@ library(ggpubr)
 library(dplyr)
 
 # Prep Rungan Data
-RunganModelingData <- read.csv('observed.prop.lossRunganJuly18.csv')
+RunganModelingData <- read.csv('observed.prop.lossRunganAugust1.csv')
 
 
 # Focus only on primates
@@ -54,20 +54,24 @@ observed.prop.lossRunganSubset$ARU_ID <- as.factor(observed.prop.lossRunganSubse
 observed.prop.lossRunganSubset$Call.category <- (as.factor(observed.prop.lossRunganSubset$Call.category))
 levels(observed.prop.lossRunganSubset$Call.category)
 
-
+# Include recorder ID as random effect
 Rungan.lmm.prop.loss.null <- lmer(magic.x ~  (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.full <- lmer(magic.x ~ distance + habitat + Call.category + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.full.aru <- lmer(magic.x ~ distance + habitat + Call.category + TimeCat + (1|Loc_Name)+ (1|ARU_ID), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+
 Rungan.lmm.prop.loss.notime <- lmer(magic.x ~ distance + habitat + Call.category  + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.nohabitat <- lmer(magic.x ~ distance  + Call.category + TimeCat +(1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.nodistance <- lmer(magic.x ~  habitat + Call.category + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
-bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,
+bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,Rungan.lmm.prop.loss.full.aru,
                Rungan.lmm.prop.loss.notime,Rungan.lmm.prop.loss.nohabitat,Rungan.lmm.prop.loss.nodistance, weights=T)
 
 
 summary(Rungan.lmm.prop.loss.full)
-hist(resid(Rungan.lmm.prop.loss.full))
+hist(resid(Rungan.lmm.prop.loss.full.aru))
 sjPlot::plot_model(Rungan.lmm.prop.loss.full,intercept=F,sort.est = TRUE)+ggtitle('Rungan Propogation Loss')+theme_bw()+geom_hline(yintercept = 0)
+
+
 
 ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
                   x='habitat',y='magic.x',fill='habitat')+ylab('Propagation Loss')+
@@ -146,9 +150,9 @@ ggboxplot(data=observed.prop.lossMaliauSubset,
 #observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time==600 |time==800 |time==800 |time==1000| time==1600 )
 
 Maliau.lmm.prop.loss.null <- lmer(magic.x ~  (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Call.category  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Species + time + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Species  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Species + time + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
 bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,
                Maliau.lmm.prop.loss.notime,Maliau.lmm.prop.loss.nodistance, weights=T)
@@ -187,7 +191,7 @@ observed.prop.lossRunganSubset <- droplevels(subset(RunganModelingData,
                                                       Call.category=="Pmor" ))
 
 
-observed.prop.lossRunganSubset$Call.category <- 
+observed.prop.lossRunganSubset$Species <- 
   recode(observed.prop.lossRunganSubset$Call.category, Hfunstart = "NGreyGibbon",
          Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangCKalimantan',
          PwurS='OrangCKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
@@ -221,7 +225,7 @@ observed.prop.lossMaliauSubset <- droplevels(subset(MaliauModelingData,
                                                       Call.category=="Pmor" ))
 
 
-observed.prop.lossMaliauSubset$Call.category <- 
+observed.prop.lossMaliauSubset$Species <- 
   recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
          Hfuntrill = "NGreyGibbon",Pmor='OrangSabah',PwurP='OrangCKalimantan',
          PwurS='OrangCKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
@@ -264,7 +268,7 @@ observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
 # Combine Rungan and Maliau data for modelling
 
 
-PropogationLossModelingDF <- rbind.data.frame(observed.prop.lossRunganSubset[,-c(14,15)],observed.prop.lossMaliauSubset)
+PropogationLossModelingDF <- rbind.data.frame(observed.prop.lossRunganSubset[,-c(1,15,16,18)],observed.prop.lossMaliauSubset)
 
 ## LMM or GAM? AIC model selection (include all 2-way interactions?)
 ## Response: Prop.Loss = dB loss per doubling distance

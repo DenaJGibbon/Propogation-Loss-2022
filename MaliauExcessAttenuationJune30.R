@@ -1,13 +1,24 @@
 library(XML)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(seewave)
+library(ggpubr)
+library(stringr)
+library(tidyverse)
+library(geosphere)
 
 # Playback template table
 SelectionIDsMaliau <- 
   read.delim("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/SelectionLabels_S00974_20190811_101922_updated.txt")
 
+TempSoundType <- 
+  str_split_fixed(SelectionIDsMaliau$Sound.Type, pattern = '_',n=3)[,2]
+
+TempSoundType <- substr(TempSoundType,start = 1,stop=2)
+
 # Remove pulses
-PulsesToRemove <- c(10,11,19,20,21,30,31,32,33,34,
-                    44, 45, 53, 54, 55, 64,65,66,67,68,
-                    78, 79, 87, 88, 89, 98,99,100,101,102)
+PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha")
 
 PlaybackSeq <- seq(1,nrow(SelectionIDsMaliau),1)
 
@@ -15,19 +26,18 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv("BackgroundNoiseRemovedMaliauJuly2022.csv")
+MaliauDF <- read.csv('/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedMaliauJuly2022add20times.csv')
+
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
 head(MaliauDF)
 table(MaliauDF$date)
 unique(MaliauDF$time)
-MaliauDF <- subset(MaliauDF, time!=920)
-MaliauDF <- subset(MaliauDF, time!=1120)
-MaliauDF <- subset(MaliauDF, time!=1320)
-MaliauDF <- subset(MaliauDF, time!=720)
-MaliauDF <- subset(MaliauDF, time!=1520)
-unique(MaliauDF$time)
+
+MaliauDF <-
+  subset(MaliauDF,time==600 |time==640 |time==800|time==840|time==1000|time==1040|
+         time==1400 |time==1440 |time==1600|time==1640)
 
 # Read in GPS data
 source('readGPX.R')
@@ -51,10 +61,12 @@ dist.mat <- distm( xy.coords, fun = distHaversine)
 colnames(dist.mat) <- c(as.character(small.gps.df$recorder))
 rownames(dist.mat) <- c(as.character(small.gps.df$recorder))
 
-# Check output
-dput((dist.mat+17)[,1])
 
 dist.to.playback.maliau <- 26.4
+
+# Check output
+dist.source.vector <- ((dist.mat+dist.to.playback.maliau)[,1])
+
 
 # Create an index with unique date/time combinations
 date.time.combo <- paste(MaliauDF$date,MaliauDF$time,sep='_')
@@ -101,8 +113,7 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
       small.sample.playback.test$PowerDb-small.sample.playback.test$PowerDb[1]
     
 
-    distance.from.source <- dist.mat[c(small.sample.playback.test$recorder),c(small.sample.playback.test$recorder[1])]
-
+  
      
     
     # Loop to calculate propagation loss; note the index starts at 2 since we use the closest one as the reference
@@ -115,8 +126,11 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
       temp.recorder.source <- subset(small.sample.playback.test,recorder==recorder.index.test[1])
       
       # Based on our distance matrix above calculate the distance between the two recorders
-      distance.from.source <- dist.mat[c(temp.recorder.received$recorder),c(small.sample.playback.test$recorder[1])]
+      receive.dist <- dist.source.vector[c(temp.recorder.received$recorder)]
       
+      source.dist <- dist.source.vector[1]
+       
+      distance.from.source <- receive.dist - source.dist
       # Assign the actual receive level (not zeroed) to new variable
       actual.receive.level <- temp.recorder.received$PowerDb
       
@@ -174,21 +188,22 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
   
 }
 
+write.csv(observed.prop.lossMaliau,'observed.prop.lossMaliau.csv',row.names = F)
 
+observed.prop.lossMaliau <- read.csv('observed.prop.lossMaliau.csv')
 observed.prop.lossMaliau$ExcessAttenuation <- round(as.numeric(observed.prop.lossMaliau$ExcessAttenuation),2)
 observed.prop.lossMaliau$time <- as.factor(observed.prop.lossMaliau$time)
 observed.prop.lossMaliau$Call.category <- str_split_fixed(observed.prop.lossMaliau$Sound.type,pattern = '_',n=3)[,2]
 observed.prop.lossMaliau$distance <- round(observed.prop.lossMaliau$distance,0)
-observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliau,Call.category=="Pmor" | Call.category=="Hfuntrill" |Call.category== "Hfunstart")
+observed.prop.lossMaliauSubset <- observed.prop.lossMaliau #subset(observed.prop.lossMaliau,Call.category=="Pmor" | Call.category=="Hfuntrill" |Call.category== "Hfunstart")
 
-observed.prop.lossMaliauSubset <- droplevels(subset(observed.prop.lossMaliauSubset,ExcessAttenuation>0))
+#observed.prop.lossMaliauSubset <- droplevels(subset(observed.prop.lossMaliauSubset,ExcessAttenuation>0))
 ggboxplot(data=observed.prop.lossMaliauSubset, x='distance',
-            y='ExcessAttenuation',fill = 'time',facet.by = 'Call.category')#+ylim(0,500)
+            y='ExcessAttenuation',facet.by = 'time')#+ylim(0,500)
 
 
-
-ggscatter(data=observed.prop.lossMaliauSubset, y='distance',
-          x='magic.x',color = 'time',facet.by = 'Call.category')#+ylim(0,500)
+ggboxplot(data=observed.prop.lossMaliauSubset, x='distance',
+          y='magic.x',color = 'time',facet.by = 'Call.category')#+ylim(0,500)
 
 ggboxplot(data=observed.prop.lossMaliauSubset, y='dBdoubledist',
           x='distance',fill = 'Call.category')#+ylim(0,500)

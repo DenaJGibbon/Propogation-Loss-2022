@@ -78,7 +78,7 @@ recorders <- str_split_fixed(MaliauNoise$wav.file,pattern = '_',n=3)[,1]
 
 # Remove close weird ones
 MaliauNoise <-
-  MaliauNoise[-which(recorders=='M1' |recorders=='M2' | recorders=='M3'  ),]
+  MaliauNoise[-which(recorders=='M1' |recorders=='M2' | recorders=='M3'| recorders=='M4'| recorders=='M5'  ),]
 
 MaliauNoiseMedian <- MaliauNoise %>%
   group_by(time,center.freq) %>%
@@ -121,24 +121,24 @@ CombinedNoiseMedian <- subset(CombinedNoiseMedian,habitat=='D'|habitat=='K'| hab
 
 ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
                                                 group=habitat,colour=habitat,linetype=habitat))+
-  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=habitat))+
-  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
-  geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-                                         ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
-  scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat),lwd=1)+
+   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
+  # geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
+  #                                        ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
+  # scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+xlab('Center Frequency (Hz)') #+ylim(25,70)
 
 ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
                                group=habitat,colour=habitat,linetype=habitat))+
-  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=habitat))+
+  stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat),lwd=1)+
   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
-  geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-                                           ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
+  # geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
+  #                                          ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
-  xlab('Center Frequency (Hz)')+xlim(0,2000)+ylim(25,45)
+  xlab('Center Frequency (Hz)')+xlim(150,2000)+ylim(25,45)
 
       
                   
@@ -170,7 +170,7 @@ ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
 
 
 # Model selection ---------------------------------------------------------
-CombinedNoiseSub <- subset(CombinedNoise,center.freq > 250 & center.freq < 2000)
+CombinedNoiseSub <- subset(CombinedNoise,center.freq > 50 & center.freq < 2000)
 CombinedNoiseSub <- subset(CombinedNoiseSub,habitat=='D'|habitat=='K'| habitat=='LP' | habitat=='MS')
 
 CombinedNoiseMedian <- CombinedNoiseSub %>%
@@ -197,16 +197,21 @@ Combined.lmerm.prop.time <- lmer(ambient.noise ~  TimeCat+ (1|Site), data=Combin
 Combined.lmerm.prop.loss.full <- lmer(ambient.noise ~  center.freq + habitat+ TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmerm.prop.loss.nocenterfreq <- lmer(ambient.noise ~  habitat+ TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmerm.prop.loss.interaction <- lmer(ambient.noise ~  habitat*TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.interaction.cf <- lmer(ambient.noise ~ center.freq + habitat*TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmerm.prop.loss.interaction.habitat <- lmer(ambient.noise ~ center.freq *habitat + TimeCat+ (1|Site), data=CombinedNoiseMedian) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
-sjPlot::plot_model(Combined.lmerm.prop.loss.interaction,intercept=F)+ggtitle('Ambient noise model coefficents')+theme_bw()+
+sjPlot::plot_model(Combined.lmerm.prop.loss.interaction.habitat,intercept=F)+ggtitle('Ambient noise model coefficents')+theme_bw()+
   geom_hline(yintercept = 0,linetype='dashed')
 
 bbmle::AICctab(Combined.lmerm.prop.loss.null,Combined.lmerm.prop.loss.center.freq,
                Combined.lmerm.prop.habitat,Combined.lmerm.prop.time,Combined.lmerm.prop.loss.full,Combined.lmerm.prop.loss.nocenterfreq,
-               Combined.lmerm.prop.loss.interaction,weights=T)
+               Combined.lmerm.prop.loss.interaction,Combined.lmerm.prop.loss.interaction.cf,Combined.lmerm.prop.loss.interaction.habitat,weights=T)
 
+hist(resid(Combined.lmerm.prop.loss.interaction))
 
+CombinedNoiseMedian500 <- subset(CombinedNoiseMedian,center.freq==250 |center.freq==500 |
+                                   center.freq==1600)
 
-ggboxplot(data=CombinedNoiseMedian,x='center.freq',y='ambient.noise',
-          facet_by='TimeCat',fill = 'habitat')
+ggboxplot(data=CombinedNoiseMedian500,x='habitat',y='ambient.noise',
+          fill  = 'center.freq',outlier.shape = NA)+xlab('Habitat')+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))
 

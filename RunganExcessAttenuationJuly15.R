@@ -8,11 +8,25 @@ library(plotKML)
 
 dist.to.playback <- 10
 
-SelectionIDs <- 
-  read.delim("SelectionLabels_S00974_20190811_101922_updated.txt")
+SelectionIDsRungan <- 
+  read.delim("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/SelectionLabels_S00974_20190811_101922_updated_fundamental.txt")
+
+TempSoundType <- 
+  str_split_fixed(SelectionIDsRungan$Sound.Type, pattern = '_',n=3)[,2]
+
+TempSoundType <- substr(TempSoundType,start = 1,stop=2)
+
+# Remove pulses
+PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha"
+                        & TempSoundType!="Pm" & TempSoundType!="Pw" )
+
+PlaybackSeq <- seq(1,nrow(SelectionIDsRungan),1)
+
+PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
+SelectionIDsRungan <- SelectionIDsRungan[-PulsesToRemove,]
 
 #NOTE that there are two Pwur call types
-RunganDF <- read.csv('BackgroundNoiseRemovedDFRunganJuly2022.csv')
+RunganDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedDFRunganAugust12022CombinedDF.csv")
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingRungan <- subset(PredictedSpreading,Site=='Munkgu')
 
@@ -47,7 +61,7 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
   
   
   # Create an index for each unique file in the playback
-  SelectionIndex <- (SelectionIDs$Sound.Type)
+  SelectionIndex <- (SelectionIDsRungan$Sound.Type)
   
   playback.index <-  which(rungan_data$Loc_Name == unique(temp.playback$Loc_Name))
   
@@ -59,7 +73,7 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
   
   # Create an index for each unique file in the playback
   distance.index <- unique(temp.playback$distance.from.source)
-  SelectionIndex <- (SelectionIDs$Sound.Type)
+  SelectionIndex <- (SelectionIDsRungan$Sound.Type)
   
   temp.playback$distance.from.source <- as.character(temp.playback$distance.from.source)
   
@@ -71,7 +85,7 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
     small.sample.playback.test <- data.frame()
     for(b in 1:length(distance.index) ){
       temp.table <- subset(temp.playback,distance.from.source==distance.index[b])
-      temp.table$Sound.Type <- SelectionIDs$Sound.Type
+      temp.table$Sound.Type <- SelectionIDsRungan$Sound.Type
       temp.table <- temp.table[a,]
       small.sample.playback.test <- rbind.data.frame(small.sample.playback.test,temp.table )
     }

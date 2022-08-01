@@ -1,14 +1,19 @@
 library(geosphere)
 library(XML)
+library(ggplot2)
+library(stringr)
 
 # Playback template table
 SelectionIDsMaliau <- 
   read.delim("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/SelectionLabels_S00974_20190811_101922_updated.txt")
 
+TempSoundType <- 
+  str_split_fixed(SelectionIDsMaliau$Sound.Type, pattern = '_',n=3)[,2]
+
+TempSoundType <- substr(TempSoundType,start = 1,stop=2)
+
 # Remove pulses
-PulsesToRemove <- c(10,11,19,20,21,30,31,32,33,34,
-                    44, 45, 53, 54, 55, 64,65,66,67,68,
-                    78, 79, 87, 88, 89, 98,99,100,101,102)
+PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha")
 
 PlaybackSeq <- seq(1,nrow(SelectionIDsMaliau),1)
 
@@ -16,19 +21,10 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv("BackgroundNoiseRemovedMaliauJuly2022.csv")
+MaliauDF <- read.csv('/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedMaliauJuly2022add20times.csv')
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
-head(MaliauDF)
-table(MaliauDF$date)
-unique(MaliauDF$time)
-MaliauDF <- subset(MaliauDF, time!=920)
-MaliauDF <- subset(MaliauDF, time!=1120)
-MaliauDF <- subset(MaliauDF, time!=1320)
-MaliauDF <- subset(MaliauDF, time!=720)
-MaliauDF <- subset(MaliauDF, time!=1520)
-unique(MaliauDF$time)
 
 # Read in GPS data
 source('readGPX.R')
@@ -187,6 +183,10 @@ observed.prop.lossMaliau$distance <- round(observed.prop.lossMaliau$distance,0)
 observed.prop.lossMaliauGibbons <- subset(observed.prop.lossMaliau,Call.category=="Hfunstart" |Call.category=="Hfuntrill" |
                                             Call.category=="Halbstart" |Call.category=="Halbpeak" )
 
+observed.prop.lossMaliauGibbons$Call.category <- 
+  recode(observed.prop.lossMaliauGibbons$Call.category, Hfunstart = "NGreyGibbon",
+         Hfuntrill = "NGreyGibbon",Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
+
 observed.prop.lossMaliauGibbons <- subset(observed.prop.lossMaliauGibbons,distance > 100)
 
 uniquegibbons <- unique(observed.prop.lossMaliauGibbons$Call.category)
@@ -243,7 +243,7 @@ for(d in 1:length(uniquegibbons)){
     geom_ribbon(aes(ymin = lower.cigibbon, ymax = upper.cigibbon), alpha = 0.25)+
     geom_hline(yintercept=noise.val,linetype="dashed", color = "black")+
     theme(axis.text=element_text(size=12), axis.title=element_text(size=12,face="bold"))+
-    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Maliau',uniquegibbons[d], '100 dB @ 1 m Source level'))+
+    xlab("Distance from source (m)") + ylab("Amplitude (dB)")+theme_bw()+ggtitle(paste('Maliau',uniquegibbons[d], gibbondB, 'dB @ 1 m Source level'))+
     ylim(25,125)
   print(gibbonplot)
 }
@@ -257,7 +257,7 @@ eq2 <- function(x){ -20*log10(x)}
 eq3 <- function(x){ -10*log10(x)}
 
 # Create a series of points based on the above equations
-Estimated1 <- cbind.data.frame(seq(1:500),eq1(1:500),rep('Estimated',500))
+Estimated1 <- cbind.data.frame(seq(1:500),eq1(1:500),rep('Excess',500))
 colnames(Estimated1) <- c("X","Value","Label")
 Spherical <- cbind.data.frame(seq(1:500),eq2(1:500),rep('Spherical',500))
 colnames(Spherical) <- c("X","Value","Label")
