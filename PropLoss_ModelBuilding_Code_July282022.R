@@ -82,98 +82,6 @@ ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
   xlab('Call category')
 
 
-# Prep Maliau Data
-observed.prop.lossMaliauSubset <- read.csv('observed.prop.lossMaliau.csv')
-
-observed.prop.lossMaliauSubset$Species <- 
-  recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
-         Hfuntrill = "NGreyGibbon",
-        Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
-
-# Add time category from 'TimeCategories-Maliau-Rungan.csv'
-observed.prop.lossMaliauSubset$time <- as.factor(observed.prop.lossMaliauSubset$time)
-
-MaliauTimes <- c("600", "640", "720", "800", "840", 
-                 "920", "1000", "1040", "1120", "1320", "1400", "1440", "1520", 
-                 "1600", "1640")
-
-MaliauCategories <- c("Dawn", 
-                 "Dawn", "Morning", "Morning", "Morning", "Morning", "Morning", "Morning", "Morning", 
-                 "Afternoon", "Afternoon", "Afternoon","Afternoon", "Afternoon", "Afternoon")
-
-MaliauTimeCats <- cbind.data.frame(MaliauTimes,MaliauCategories)
-MaliauTimeCats$MaliauTimes <- as.factor(MaliauTimeCats$MaliauTimes )
-MaliauTimeCats$MaliauCategories <- as.factor(MaliauTimeCats$MaliauCategories)
-
-
-TimeCatsMaliauList <- list()
-for(a in 1:nrow(observed.prop.lossMaliauSubset)){
-  Temprow <-  observed.prop.lossMaliauSubset[a,]
-
-  TempTime <- subset(MaliauTimeCats,MaliauTimes==
-                       as.factor(Temprow$time) )
-  
-  TimeCatsMaliauList[[a]] <- TempTime$MaliauCategories
-}
-
-observed.prop.lossMaliauSubset$TimeCat <- unlist(TimeCatsMaliauList)
-observed.prop.lossMaliauSubset$playback.num <- paste(observed.prop.lossMaliauSubset$date,observed.prop.lossMaliauSubset$time,sep='_')
-observed.prop.lossMaliauSubset$habitat <- rep('D',nrow(observed.prop.lossMaliauSubset))
-observed.prop.lossMaliauSubset$site <- rep('Maliau',nrow(observed.prop.lossMaliauSubset)) 
-observed.prop.lossMaliauSubset$distance <- as.factor(observed.prop.lossMaliauSubset$distance)
-
-levels(observed.prop.lossMaliauSubset$distance) <- c("50","50","50", 
-                                                     "100", "100","100",
-                                                     "150","150",
-                                                     "200","200",'250','300','350')
-
-observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop.lossMaliauSubset$distance))
-
-hist(observed.prop.lossMaliauSubset$magic.x)
-
-# observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,magic.x >= -50 & magic.x <= -10)
-# observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
-#                                          magic.x >= -50 & magic.x <= -10)
-
-observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time!='720'& time!='920'& time!='1320'& time!='1120'& time!='1520')
-
-observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
-
-unique(observed.prop.lossMaliauSubset$time)                                                                                  
-
-ggboxplot(data=observed.prop.lossMaliauSubset,
-          y='actual.receive.level', x='Call.category')
-
-ggboxplot(data=observed.prop.lossMaliauSubset,
-          y='magic.x', x='Call.category')
-
-#observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time==600 |time==800 |time==800 |time==1000| time==1600 )
-
-Maliau.lmm.prop.loss.null <- lmer(magic.x ~  (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Species + time + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Species  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Species + time + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-
-bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,
-               Maliau.lmm.prop.loss.notime,Maliau.lmm.prop.loss.nodistance, weights=T)
-
-summary(Maliau.lmm.prop.loss.full)
-sjPlot::plot_model(Maliau.lmm.prop.loss.full,intercept=F,sort.est = TRUE)+ggtitle('Maliau propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
-
-ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  x='TimeCat',y='magic.x',fill='TimeCat')
-
-ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  x='Call.category',y='magic.x',
-                  fill ='time') +ylab('Propogation loss')
-
-ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  fill='Call.category',y='noise.level',
-                  x ='time') +ylab('Noise')
-
-ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  fill='Call.category',y='magic.x',
-                  x ='time') +ylab('Propogation loss')
 
 # 1. compare prop loss across habitats, sound types, times of day ------------------
 # Combined sites ----------------------------------------------------------
@@ -231,30 +139,15 @@ observed.prop.lossMaliauSubset$Species <-
          PwurS='OrangCKalimantan',Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
 # Add time category from 'TimeCategories-Maliau-Rungan.csv'
-observed.prop.lossMaliauSubset$time <- as.factor(observed.prop.lossMaliauSubset$time)
+observed.prop.lossMaliauSubset$time <- as.numeric(observed.prop.lossMaliauSubset$time)
 
-MaliauTimes <- c("600", 
-                 "640", "800", "840", "1000", "1040", "1440", "1600", "1640")
+observed.prop.lossMaliauSubset$TimeCat <-  observed.prop.lossMaliauSubset%>%mutate(New_Column = case_when(
+  time <= 640  ~ 'Dawn',
+  time >= 800 & time <= 1200 ~ 'Morning',
+  TRUE ~ 'Afternoon'
+))
 
-MaliauCategories <- c("Dawn", 
-                      "Dawn", "Morning", "Morning", "Morning", "Morning", "Afternoon", "Afternoon", "Afternoon")
-
-MaliauTimeCats <- cbind.data.frame(MaliauTimes,MaliauCategories)
-MaliauTimeCats$MaliauTimes <- as.factor(MaliauTimeCats$MaliauTimes )
-MaliauTimeCats$MaliauCategories <- as.factor(MaliauTimeCats$MaliauCategories)
-
-
-TimeCatsMaliauList <- list()
-for(a in 1:nrow(observed.prop.lossMaliauSubset)){
-  Temprow <-  observed.prop.lossMaliauSubset[a,]
-  
-  TempTime <- subset(MaliauTimeCats,MaliauTimes==
-                       as.factor(Temprow$time) )
-  
-  TimeCatsMaliauList[[a]] <- TempTime$MaliauCategories
-}
-
-observed.prop.lossMaliauSubset$TimeCat <- unlist(TimeCatsMaliauList)
+observed.prop.lossMaliauSubset$TimeCat <- as.factor(TimeCatsMaliauList)
 observed.prop.lossMaliauSubset$playback.num <- paste(observed.prop.lossMaliauSubset$date,observed.prop.lossMaliauSubset$time,sep='_')
 observed.prop.lossMaliauSubset$habitat <- rep('D',nrow(observed.prop.lossMaliauSubset))
 observed.prop.lossMaliauSubset$site <- rep('Maliau',nrow(observed.prop.lossMaliauSubset)) 
@@ -262,8 +155,6 @@ observed.prop.lossMaliauSubset$distance <- as.factor(observed.prop.lossMaliauSub
 levels(observed.prop.lossMaliauSubset$distance) <- c("50", "100","150","200",'250','300','350')
 observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop.lossMaliauSubset$distance))
 observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,magic.x >= -45 & magic.x <= -15)
-observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
-                                         time==600| time==800|time==1000|time==1600 )
 
 # Combine Rungan and Maliau data for modelling
 
