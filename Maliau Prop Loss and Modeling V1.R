@@ -7,6 +7,7 @@ library(ggpubr)
 library(stringr)
 library(tidyverse)
 library(geosphere)
+library(lme4)
 
 # Playback template table
 SelectionIDsMaliau <- 
@@ -26,7 +27,7 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv('/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/BackgroundNoiseRemovedMaliauAugust12022.csv')
+MaliauDF <- read.csv('BackgroundNoiseRemovedMaliauAugust9AdaptiveNoise.csv')
 
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
@@ -59,7 +60,7 @@ colnames(dist.mat) <- c(as.character(small.gps.df$recorder))
 rownames(dist.mat) <- c(as.character(small.gps.df$recorder))
 
 
-dist.to.playback.maliau <- 17.1 #26.4
+dist.to.playback.maliau <-26.4  #17.1
 
 # Check output
 dist.source.vector <- ((dist.mat+dist.to.playback.maliau)[,1])
@@ -102,6 +103,8 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
       small.sample.playback.test <- rbind.data.frame(small.sample.playback.test,temp.table )
     }
     
+    small.sample.playback.test <- small.sample.playback.test[order(small.sample.playback.test$recorder),]
+    
     # Create an index for each unique recorder in the new subset dataset
     recorder.index.test <- unique(small.sample.playback.test$recorder)
     
@@ -110,8 +113,7 @@ for(z in 1:length(unique.date.time.combo)) { tryCatch({
       small.sample.playback.test$PowerDb-small.sample.playback.test$PowerDb[1]
     
 
-  
-     
+      
     
     # Loop to calculate propagation loss; note the index starts at 2 since we use the closest one as the reference
     for(c in 2:length(recorder.index.test)){tryCatch({ 
@@ -193,19 +195,19 @@ observed.prop.lossMaliau$Call.category <- str_split_fixed(observed.prop.lossMali
 observed.prop.lossMaliau$distance <- round(observed.prop.lossMaliau$distance,0)
 observed.prop.lossMaliauSubset <- observed.prop.lossMaliau #subset(observed.prop.lossMaliau,Call.category=="Pmor" | Call.category=="Hfuntrill" |Call.category== "Hfunstart")
 
-write.csv(observed.prop.lossMaliau,'observed.prop.lossMaliauAugust2.csv',row.names = F)
+write.csv(observed.prop.lossMaliau,'observed.prop.lossMaliauAugust10adaptive.csv',row.names = F)
 
 
 # Prep Maliau Data
-observed.prop.lossMaliauSubset <- read.csv('observed.prop.lossMaliauAugust2.csv')
+observed.prop.lossMaliauSubset <- read.csv('observed.prop.lossMaliauAugust10adaptive.csv')
 
 observed.prop.lossMaliauSubset$Species <- 
   recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
          Hfuntrill = "NGreyGibbon",
          Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
-# Add time category from 'TimeCategories-Maliau-Rungan.csv'
-observed.prop.lossMaliauSubset$time <- as.numeric(observed.prop.lossMaliauSubset$time)
+# Add time category
+#observed.prop.lossMaliauSubset$time <- as.numeric(observed.prop.lossMaliauSubset$time)
 
 observed.prop.lossMaliauSubset <-  observed.prop.lossMaliauSubset %>%
   mutate(TimeCat = case_when(
@@ -224,12 +226,13 @@ observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop
 hist(observed.prop.lossMaliauSubset$magic.x)
 
 # observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,magic.x >= -50 & magic.x <= -10)
-observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
-                                         magic.x >= -40 )
+# observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
+#                                          distance <=200)
 
-#observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time!='720'& time!='920'& time!='1320'& time!='1120'& time!='1520')
+# Remove this playback due to presence of calling gibbons
+observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time!='720')
 
-#observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
+observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
 
 unique(observed.prop.lossMaliauSubset$time)                                                                                  
 
@@ -239,34 +242,68 @@ ggboxplot(data=observed.prop.lossMaliauSubset,
 ggboxplot(data=observed.prop.lossMaliauSubset,
           y='magic.x', x='Call.category')
 
-observed.prop.lossMaliauSubset <- droplevels(subset(observed.prop.lossMaliauSubset, time!=920 & time!=1120  &time!=1320 & time!=1520))
+#observed.prop.lossMaliauSubset <- droplevels(subset(observed.prop.lossMaliauSubset, time!=920 & time!=1120  &time!=1320 & time!=1520))
+observed.prop.lossMaliauSubset$date <- as.factor(observed.prop.lossMaliauSubset$date)
+observed.prop.lossMaliauSubset$TimeCat <- as.factor(observed.prop.lossMaliauSubset$TimeCat)
+observed.prop.lossMaliauSubset$Call.category <- as.factor(observed.prop.lossMaliauSubset$Call.category )
 
 Maliau.lmm.prop.loss.null <- lmer(magic.x ~  (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Call.category  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full.cat <- lmer(magic.x ~ distance  + Species*Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Species  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+# Maliau.lmm.prop.loss.full.cat <- lmer(magic.x ~ distance  + Species*Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+# Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
 
-bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,Maliau.lmm.prop.loss.full.species,
+bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,
                Maliau.lmm.prop.loss.notime,Maliau.lmm.prop.loss.nodistance, weights=T)
 
 summary(Maliau.lmm.prop.loss.full)
+hist(resid(Maliau.lmm.prop.loss.full))
 sjPlot::plot_model(Maliau.lmm.prop.loss.full,intercept=F,sort.est = TRUE)+ggtitle('Maliau propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
+sjPlot::plot_model(Maliau.lmm.prop.loss.full.species,intercept=F,sort.est = TRUE)+ggtitle('Maliau propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
 
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  x='TimeCat',y='magic.x',fill='TimeCat')
+                  x='Species',y='magic.x',fill='TimeCat')
 
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                   x='Call.category',y='magic.x',
                   fill ='time') +ylab('Propogation loss')
 
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
-                  fill='Call.category',y='noise.level',
-                  x ='time') +ylab('Noise')
+                  x='Call.category',y='actual.receive.level',
+                  fill ='time') +ylab('Propogation loss')
+
+
+ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
+                  facet.by ='Call.category',y='noise.level',
+                  x ='distance') +ylab('Noise')
 
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                   fill='Call.category',y='magic.x',
                   x ='time') +ylab('Propogation loss')
+
+temp.df <- subset(observed.prop.lossMaliauSubset,Call.category=="Hfuntrill")
+which.max(temp.df$magic.x
+          )
+temp.df[230:240,]
+ggpubr::ggboxplot(data=subset(observed.prop.lossMaliauSubset,Call.category=="Hfuntrill"),
+                  facet.by ='Call.category',y='magic.x',color='TimeCat',
+                  x ='distance') +ylab('Prop loss')
+
+ggpubr::ggboxplot(data=subset(observed.prop.lossMaliauSubset,Call.category=="Hfunstart"),
+                  facet.by ='Call.category',y='magic.x',color='TimeCat',
+                  x ='distance') +ylab('Prop loss')
+
+ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
+                  facet.by ='Call.category',y='magic.x', fill='time',
+                  x ='distance') +ylab('Prop loss')
+
+ggpubr::ggboxplot(data=subset(observed.prop.lossMaliauSubset,Call.category=="Halbstart"),
+                  facet.by ='Call.category',y='magic.x',
+                  x ='distance') +ylab('Prop loss')
+
+ggpubr::ggboxplot(data=subset(observed.prop.lossMaliauSubset,Call.category=="Halbend"),
+                  facet.by ='Call.category',y='magic.x',
+                  x ='distance') +ylab('Prop loss')
 
