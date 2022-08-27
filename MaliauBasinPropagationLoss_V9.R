@@ -9,6 +9,7 @@
 # Version 6. Add playbacks over two recordings; filter before downsample to prevent aliasing
 # Version 7. Remove all orangutan pulses and upsweeps to focus only on gibbons
 # Version 8. Add back adaptive noise
+# Version 9. Shift frequency of trill down to avoid background noise
 
 # Part 1. Load necessary packages -------------------------------------------------------------
 library(seewave)

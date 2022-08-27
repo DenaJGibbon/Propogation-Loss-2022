@@ -27,11 +27,31 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv('BackgroundNoiseRemovedMaliauAugust23ShiftTrill.csv')
+MaliauDFValidated <- read.csv('UpdateMaliauDFValidatedAugust22Noise5sec25ms.csv')
+UpdatedNoiseDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauAugust24SubtractMoreNoise.csv")
 
-#MaliauDF <-  read.csv('UpdateMaliauDFValidatedAugust14.csv')
+MergedDF <- merge(MaliauDFValidated,UpdatedNoiseDF,by=c("file.name","Sound.Type"))
 
-#MaliauDF <- droplevels(subset(MaliauDF,target.signal=='y'))
+head(MergedDF)
+nrow(MergedDF)
+
+MergedDF <- MergedDF[,c("file.name", "Sound.Type", "recorder.x", 
+                        "Begin.Time..s..x", "End.Time..s..x", "Low.Freq..Hz..x", 
+  "High.Freq..Hz..x", "Delta.Time..s..x", 
+   "date.x", "time.x", 
+  "PowerDb.x", "NoisevalueDb.x", "target.signal", 
+  "PowerDb.y", "PowerDbWithNoise", "NoisevalueDb.y")]
+
+colnames(MergedDF) <- c("file.name", "Sound.Type", "recorder", 
+                        "Begin.Time..s..", "End.Time..s..", "Low.Freq..Hz..", 
+                        "High.Freq..Hz..", "Delta.Time..s..",  
+                         "date", "time", 
+                        "PowerDb.15quantile", "NoisevalueDb.x", "target.signal", 
+                        "PowerDb.25quantile", "PowerDbWithNoise", "NoisevalueDb.y")
+
+MaliauDF <-  MergedDF
+
+MaliauDF <- droplevels(subset(MaliauDF,target.signal=='y'))
 PredictedSpreading <- read.csv("Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
@@ -40,6 +60,7 @@ table(MaliauDF$date)
 unique(MaliauDF$time)
 nrow(MaliauDF)
 
+MaliauDF <- na.omit(MaliauDF)
 
 # Read in GPS data
 source('readGPX.R')
@@ -103,20 +124,20 @@ for(z in 1:length(unique.date.time.combo)) { #tryCatch({
     # Subset the same selection from each of the recorders
     small.sample.playback.test <- data.frame()
     for(b in 1:length(file.index) ){
-      temp.table <- subset(temp.playback,file.name==file.index[b])
+      temp.table <- subset(temp.playback,file.name==file.index[b] &Sound.Type==SelectionIndex[a])
       #temp.table$Sound.Type <- SelectionIDsMaliau$Sound.Type
       temp.table <- temp.table[a,]
       small.sample.playback.test <- rbind.data.frame(small.sample.playback.test,temp.table )
     }
     
-    small.sample.playback.test <- small.sample.playback.test[order(small.sample.playback.test$recorder),]
+    small.sample.playback.test <- na.omit(small.sample.playback.test[order(small.sample.playback.test$recorder),]
     
     # Create an index for each unique recorder in the new subset dataset
     recorder.index.test <- unique(small.sample.playback.test$recorder)
     
     # Create a new column with receive levels standardized so the closest recorder is 0
-    small.sample.playback.test$PowerDb.zero <- 
-      small.sample.playback.test$PowerDb-small.sample.playback.test$PowerDb[1]
+    small.sample.playback.test$PowerDb.15quantile.zero <- 
+      small.sample.playback.test$PowerDb.15quantile-small.sample.playback.test$PowerDb.15quantile[1]
     
 
       
@@ -138,13 +159,13 @@ for(z in 1:length(unique.date.time.combo)) { #tryCatch({
       distance.from.source <- receive.dist - source.dist
      
        # Assign the actual receive level (not zeroed) to new variable
-      actual.receive.level <- temp.recorder.received$PowerDb
+      actual.receive.level <- temp.recorder.received$PowerDb.15quantile
       
       # Assign zeroed receive level to new variable 
-      zero.receive.level <- temp.recorder.received$PowerDb.zero
+      zero.receive.level <- temp.recorder.received$PowerDb.15quantile.zero
       
       # Assign 'source' level to new variable
-      source.level <- temp.recorder.source$PowerDb.zero
+      source.level <- temp.recorder.source$PowerDb.15quantile.zero
       
       # Assign distance to new variable
       distance <- distance.from.source
@@ -153,7 +174,7 @@ for(z in 1:length(unique.date.time.combo)) { #tryCatch({
       
       PredictedSpreadingMaliauTemp <- PredictedSpreadingMaliau[isolate.distance,]
       
-      ActualDbDifference <- temp.recorder.source$PowerDb  - temp.recorder.received$PowerDb  
+      ActualDbDifference <- temp.recorder.source$PowerDb.15quantile  - temp.recorder.received$PowerDb.15quantile  
       
       ExcessAttenuation <-  ActualDbDifference -PredictedSpreadingMaliauTemp$dBLoss_Spherical
       
@@ -214,12 +235,12 @@ observed.prop.lossMaliauSubset$Species <-
          Halbstart='WhiteBeardGibbon',Halbend='WhiteBeardGibbon',Halbpeak='WhiteBeardGibbon')
 
 # Add time category
-observed.prop.lossMaliauSubset$time <- as.numeric(observed.prop.lossMaliauSubset$time)
+observed.prop.lossMaliauSubset$time <- as.numeric(as.character(observed.prop.lossMaliauSubset$time))
 
 observed.prop.lossMaliauSubset <-  observed.prop.lossMaliauSubset %>%
   mutate(TimeCat = case_when(
-    time <= 7  ~ 'Dawn',
-    time >= 8 & time <= 12 ~ 'Morning',
+    time <= 700  ~ 'Dawn',
+    time >= 800 & time <= 1200 ~ 'Morning',
     TRUE ~ 'Afternoon'
   ))
 
@@ -275,7 +296,7 @@ summary(Maliau.lmm.prop.loss.full)
 hist(resid(Maliau.lmm.prop.loss.full))
 sjPlot::plot_model(Maliau.lmm.prop.loss.full ,intercept=F,sort.est = TRUE)+ggtitle('Maliau propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
 
-sjPlot::plot_model(Maliau.lmm.prop.loss.full,type='eff',intercept=F,sort.est = TRUE)
+sjPlot::plot_model(Maliau.lmm.prop.loss.full.cat,type='eff',intercept=F,sort.est = TRUE)
 
 
 
@@ -285,11 +306,11 @@ ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                   x ='distance') +ylab('Propogation loss')
 
 
-ggpubr::ggscatter(data=observed.prop.lossMaliau,
-                  facet.by  ='Sound.type',y='magic.x', fill='time',
-                  x ='distance') +ylab('Prop loss')
-
-
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                                      fill='Call.category',y='noise.level',
                                      x ='time') +ylab('Noise')
+
+ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
+                  fill='Call.category',y='magic.x',
+                  x ='time') +ylab('Magic x')
+

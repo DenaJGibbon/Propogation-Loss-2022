@@ -9,6 +9,8 @@
 # Version 6. Add playbacks over two recordings; filter before downsample to prevent aliasing
 # Version 7. Remove all orangutan pulses and upsweeps to focus only on gibbons
 # Version 8. Add back adaptive noise
+# Version 9. Shift frequency of trill down to avoid background noise
+# Version 10. Add signal without background noise removed; remove .25 quantile noise
 
 # Part 1. Load necessary packages -------------------------------------------------------------
 library(seewave)
@@ -32,7 +34,7 @@ TempSoundType <-
 TempSoundType <- substr(TempSoundType,start = 1,stop=2)
 
 # Remove pulses
-PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha")
+PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha" ) # & TempSoundType!="Pm"
 
 PlaybackSeq <- seq(1,nrow(SelectionIDsMaliau),1)
 
@@ -170,7 +172,7 @@ duration.secs <- 40*60
 
 # Create an empty dataframe to add to iteratively in the loop
 BackgroundNoiseRemovedDFMaliau <- data.frame()
-ThirdOctaveBandDF <- data.frame()
+#ThirdOctaveBandDF <- data.frame()
 # The loop to calculate inband power (after subtracting the noise) for each selection from the wave file
 for(b in 1:length(file.name.index.sorted)){ tryCatch({ 
   print(paste('processing sound file',file.name.index.sorted[b] ))
@@ -232,8 +234,17 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
   
     
   # Check to make sure number of selections matches the template
-  if(nrow(singleplayback.df)==nrow(SelectionIDsMaliau)){ 
-    print('Calculating receive levels')
+  if(nrow(singleplayback.df)==nrow(SelectionIDsMaliau)){
+    
+  which.trill <- 
+    which(str_detect(SelectionIDsMaliau$Sound.Type,'trill') ) 
+  
+  singleplayback.df$High.Freq..Hz.[which.trill] <- '1425'
+  
+  singleplayback.df$High.Freq..Hz. <- as.numeric(singleplayback.df$High.Freq..Hz.)
+  
+  print('Calculating receive levels')
+  
   # Use the Raven selection table to cut each selection into an individual .wav file
   ListofWavs <- 
     lapply(1:nrow(singleplayback.df), function(x) cutw(wavfile.temp, from= (singleplayback.df$Begin.Time..s.[x]- signal.time.buffer),
@@ -326,7 +337,7 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
     # Subset the correspond row from the selection table
     Selectiontemp <- singleplayback.df[d,]
     
-  
+    Selectiontemp$Sound.Type <-  SelectionIDsMaliau[d,]$Sound.Type
     
     # Use the Raven selection table to extract a longer duration .wav file for noise
     NoiseWav1 <- cutw(wavfile.temp, from= (Selectiontemp$Begin.Time..s.-timesecs),
@@ -395,25 +406,44 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
    
   
    # Take the minimum value from the noise samples
-   noise.value.list[[e]] <- quantile(unlist(noise.list),.15)
-   noise.location.list[[e]] <- which(unlist(noise.list) < quantile(unlist(noise.list),.15))[1]
+   noise.value.list[[e]] <- quantile(unlist(noise.list),.25)
+   noise.location.list[[e]] <- bin.seq[which(unlist(noise.list) <= quantile(unlist(noise.list),.25))]
     }
    
     
    noise.value <- min(unlist(noise.value.list))
    
+   
+   noise.index <- which.min(unlist(noise.value.list))
+   wavdur <-  Selectiontemp$End.Time..s.- Selectiontemp$Begin.Time..s.
+  # NumTimeWindows <- wavdur/noise.subsamples
+  # noise.value <- NumTimeWindows*noise.value
+   
    # Make spectrograms to check noise
    wavtemp <- ListofWavs[[d]]
-   wavdur <-  Selectiontemp$End.Time..s.- Selectiontemp$Begin.Time..s.
    wavtemp@left <- c(NoiseWav1@left,wavtemp@left,NoiseWav2@left)
    temp.spec <- signal::specgram(wavtemp@left, Fs = wavtemp@samp.rate, 
                                  n = 1600, overlap = 0)
    
-   pdf(paste('NoiseSpectrograms5sec25ms/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
+   # normalize and rescale to dB
+   P <- abs(temp.spec$S)
+   P <- P/max(P)
+   temp.spec$S <- P
+   
+   pdf(paste('NoiseSpectrograms5sec25msRungan/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
    plot(temp.spec, xlab = "", ylab = "", ylim = c(200, 2500),# (matlab::jet.colors(255)) ,
         axes=T,useRaster = TRUE,main=paste(file.name.index.sorted[b],d,Selectiontemp$Sound.Type ))
-   abline(v= unlist(noise.location.list)[1]*noise.subsamples,col='red' )
-   abline(v= unlist(noise.location.list)[2]*noise.subsamples +timesecs+wavdur,col='red' )
+   if(noise.index==1){
+   abline(v= unlist(noise.location.list)[1],col='red' )
+   abline(v= unlist(noise.location.list)[1]+noise.subsamples,col='red' )
+   }
+   
+  if(noise.index==2){
+    abline(v= unlist(noise.location.list)[2]+timesecs+wavdur,col='red' )
+    abline(v= unlist(noise.location.list)[2]+noise.subsamples+timesecs+wavdur+noise.subsamples,col='red' )
+    
+     }
+   
    rect(timesecs, Selectiontemp$Low.Freq..Hz., (timesecs+wavdur), Selectiontemp$High.Freq..Hz.,col='NA')
    graphics.off()
    
@@ -439,6 +469,9 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
       # Calculate absolute receive level of the signal in the selection in dB (subtracting noise)
       Selectiontemp$PowerDb <- 20 * log10((signal.value-noise.value))
       
+      # Calculate absolute receive level of the signal in the selection in dB (not subtracting noise)
+      Selectiontemp$PowerDbWithNoise <- 20 * log10((signal.value))
+      
       # Calculate noise level in dB
       Selectiontemp$NoisevalueDb <- 20 * log10((noise.value))
       
@@ -449,7 +482,7 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
       
       # Combine into a dataframe
       BackgroundNoiseRemovedDFMaliau <- rbind.data.frame(BackgroundNoiseRemovedDFMaliau,Selectiontemp)
-      write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauAugust19AdaptiveNoiseMinNoise.csv',row.names = F)
+      write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauAugust24SubtractMoreNoise.csv',row.names = F)
   }
   
   }
