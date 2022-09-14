@@ -11,6 +11,7 @@
 # Version 8. Add back adaptive noise
 # Version 9. Shift frequency of trill down to avoid background noise
 # Version 10. Add signal without background noise removed; remove .25 quantile noise
+# Version 11. Add back in P. morio
 
 # Part 1. Load necessary packages -------------------------------------------------------------
 library(seewave)
@@ -420,33 +421,33 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
   # noise.value <- NumTimeWindows*noise.value
    
    # Make spectrograms to check noise
-   wavtemp <- ListofWavs[[d]]
-   wavtemp@left <- c(NoiseWav1@left,wavtemp@left,NoiseWav2@left)
-   temp.spec <- signal::specgram(wavtemp@left, Fs = wavtemp@samp.rate, 
-                                 n = 1600, overlap = 0)
-   
-   # normalize and rescale to dB
-   P <- abs(temp.spec$S)
-   P <- P/max(P)
-   temp.spec$S <- P
-   
-   pdf(paste('NoiseSpectrograms5sec25msRungan/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
-   plot(temp.spec, xlab = "", ylab = "", ylim = c(200, 2500),# (matlab::jet.colors(255)) ,
-        axes=T,useRaster = TRUE,main=paste(file.name.index.sorted[b],d,Selectiontemp$Sound.Type ))
-   if(noise.index==1){
-   abline(v= unlist(noise.location.list)[1],col='red' )
-   abline(v= unlist(noise.location.list)[1]+noise.subsamples,col='red' )
-   }
-   
-  if(noise.index==2){
-    abline(v= unlist(noise.location.list)[2]+timesecs+wavdur,col='red' )
-    abline(v= unlist(noise.location.list)[2]+noise.subsamples+timesecs+wavdur+noise.subsamples,col='red' )
-    
-     }
-   
-   rect(timesecs, Selectiontemp$Low.Freq..Hz., (timesecs+wavdur), Selectiontemp$High.Freq..Hz.,col='NA')
-   graphics.off()
-   
+   #wavtemp <- ListofWavs[[d]]
+  #  wavtemp@left <- c(NoiseWav1@left,wavtemp@left,NoiseWav2@left)
+  #  temp.spec <- signal::specgram(wavtemp@left, Fs = wavtemp@samp.rate, 
+  #                                n = 1600, overlap = 0)
+  #  
+  #  # normalize and rescale to dB
+  #  P <- abs(temp.spec$S)
+  #  P <- P/max(P)
+  #  temp.spec$S <- P
+  #  
+  #  pdf(paste('NoiseSpectrograms5sec25msRungan/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
+  #  plot(temp.spec, xlab = "", ylab = "", ylim = c(200, 2500),# (matlab::jet.colors(255)) ,
+  #       axes=T,useRaster = TRUE,main=paste(file.name.index.sorted[b],d,Selectiontemp$Sound.Type ))
+  #  if(noise.index==1){
+  #  abline(v= unlist(noise.location.list)[1],col='red' )
+  #  abline(v= unlist(noise.location.list)[1]+noise.subsamples,col='red' )
+  #  }
+  #  
+  # if(noise.index==2){
+  #   abline(v= unlist(noise.location.list)[2]+timesecs+wavdur,col='red' )
+  #   abline(v= unlist(noise.location.list)[2]+noise.subsamples+timesecs+wavdur+noise.subsamples,col='red' )
+  #   
+  #    }
+  #  
+  #  rect(timesecs, Selectiontemp$Low.Freq..Hz., (timesecs+wavdur), Selectiontemp$High.Freq..Hz.,col='NA')
+  #  graphics.off()
+  #  
     
    # Isolate the corresponding .wav file for the playback selection
    SignalWavtemp <-  ListofWavs[[d]]
@@ -482,7 +483,7 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
       
       # Combine into a dataframe
       BackgroundNoiseRemovedDFMaliau <- rbind.data.frame(BackgroundNoiseRemovedDFMaliau,Selectiontemp)
-      #write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauAugust24SubtractMoreNoise.csv',row.names = F)
+      write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauSept625thNoiseAddPMorio.csv',row.names = F)
   }
   
   }

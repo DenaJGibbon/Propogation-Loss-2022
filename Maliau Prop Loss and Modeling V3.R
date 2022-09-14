@@ -27,9 +27,9 @@ PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
 SelectionIDsMaliau <- SelectionIDsMaliau[-PulsesToRemove,]
 
 
-MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauAugust9AdaptiveNoiseMinNoise.csv")
+#MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauAugust9AdaptiveNoiseMinNoise.csv")
 MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauAugust24SubtractMoreNoise.csv")
-MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauJuly2022.csv")
+#MaliauDF <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/BackgroundNoiseRemovedMaliauJuly2022.csv")
 PredictedSpreading <- read.csv("Predicted_dB_Spherical.csv")
 PredictedSpreadingMaliau <- subset(PredictedSpreading,Site=='Maliau')
 
@@ -68,7 +68,9 @@ dist.to.playback.maliau <- 26.4    #17.1
 # Check output
 dist.source.vector <- ((dist.mat+dist.to.playback.maliau)[,1])
 
-# Add hypotenuse distances
+# Calculate hypotenuse distances
+dist.source.vector <- sqrt(20^2 + dist.source.vector^2) 
+
 #dist.source.vector[2:9] <- PredictedSpreadingMaliau$Dist2
 
 # Create an index with unique date/time combinations
@@ -160,7 +162,7 @@ for(z in 1:length(unique.date.time.combo)) { #tryCatch({
       noise.level <- temp.recorder.received$NoisevalueDb
       
       # Calculate the distance ratio for propagation loss equation
-      dist.ratio <- log10(distance/source.dist)
+      dist.ratio <- log10(receive.dist/source.dist)
       
       # Calculate the 'magic x'
       magic.x <-  zero.receive.level/dist.ratio
@@ -194,6 +196,7 @@ for(z in 1:length(unique.date.time.combo)) { #tryCatch({
 }
 
 
+
 #observed.prop.lossMaliau <- read.csv('observed.prop.lossMaliau.csv')
 observed.prop.lossMaliau$ExcessAttenuation <- round(as.numeric(observed.prop.lossMaliau$ExcessAttenuation),2)
 observed.prop.lossMaliau$time <- as.factor(observed.prop.lossMaliau$time)
@@ -203,9 +206,7 @@ observed.prop.lossMaliauSubset <- observed.prop.lossMaliau #subset(observed.prop
 
 #write.csv(observed.prop.lossMaliau,'observed.prop.lossMaliauAugust14adaptive.csv',row.names = F)
 
-
 # Prep Maliau Data
-#observed.prop.lossMaliauSubset <- read.csv('observed.prop.lossMaliauAugust11adaptive.csv')
 
 observed.prop.lossMaliauSubset$Species <- 
   recode(observed.prop.lossMaliauSubset$Call.category, Hfunstart = "NGreyGibbon",
@@ -234,20 +235,27 @@ observed.prop.lossMaliauSubset$distance <- as.numeric(as.character(observed.prop
 
 # Remove outliers
 hist(observed.prop.lossMaliauSubset$magic.x)
-magic.x.mean <- mean(observed.prop.lossMaliauSubset$magic.x)
-magic.x.sd <- sd((observed.prop.lossMaliauSubset$magic.x))
-magic.x.sd <- magic.x.sd*3
+# magic.x.mean <- mean(observed.prop.lossMaliauSubset$magic.x)
+#  magic.x.sd <- sd((observed.prop.lossMaliauSubset$magic.x))
+#  magic.x.sd <- magic.x.sd*3
+# 
+outliers <- boxplot.stats(observed.prop.lossMaliauSubset$magic.x)$out
+# 
+out_ind <- which(observed.prop.lossMaliauSubset$magic.x %in% c(outliers))
+out_ind
+# 
+# # Subset removing outliers
+observed.prop.lossMaliauSubset <- observed.prop.lossMaliauSubset[-out_ind,]
 
-# Subset removing outliers
+#observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, magic.x > -60 & magic.x < -15)
+
 observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
-                                         magic.x >= (magic.x.mean - magic.x.sd) & 
-                                           magic.x <= (magic.x.mean + magic.x.sd))
- 
- observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset,
                                              distance <=315)
 
 # Remove this playback due to presence of calling gibbons
 observed.prop.lossMaliauSubset <- subset(observed.prop.lossMaliauSubset, time!='720')
+
+hist(observed.prop.lossMaliauSubset$magic.x)
 
 observed.prop.lossMaliauSubset$distance <- log10(observed.prop.lossMaliauSubset$distance)
 
@@ -267,22 +275,21 @@ observed.prop.lossMaliauSubset$Call.category <- as.factor(observed.prop.lossMali
 levels(observed.prop.lossMaliauSubset$Call.category)
 
 Maliau.lmm.prop.loss.null <- lmer(magic.x ~  (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Call.category  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full.cat <- lmer(magic.x ~ distance*Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Species  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full.cat <- lmer(magic.x ~ distance*Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
 
-bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,Maliau.lmm.prop.loss.full.cat,Maliau.lmm.prop.loss.full.species,
+bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,Maliau.lmm.prop.loss.full.species,
                Maliau.lmm.prop.loss.notime,Maliau.lmm.prop.loss.nodistance, weights=T)
 
 summary(Maliau.lmm.prop.loss.full)
 hist(resid(Maliau.lmm.prop.loss.full))
-sjPlot::plot_model(Maliau.lmm.prop.loss.full ,intercept=F,sort.est = TRUE)+ggtitle('Maliau propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
-
-sjPlot::plot_model(Maliau.lmm.prop.loss.full.cat,type='eff',intercept=F,sort.est = TRUE)
-
+MaliauPropLoss <- sjPlot::plot_model(Maliau.lmm.prop.loss.full.species ,intercept=F,sort.est = TRUE)+ggtitle('Maliau Propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
+MaliauPropLoss
+sjPlot::plot_model(Maliau.lmm.prop.loss.full,type='eff',intercept=F,sort.est = TRUE)
 
 
 
@@ -291,17 +298,8 @@ ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                   x ='distance') +ylab('Receive levels')
 
 
-ggpubr::ggboxplot(data=MaliauDFValidated,
-                                     fill='Sound.Type',y='NoisevalueDb',
-                                     x ='recorder') +ylab('Noise')
-
-
-ggpubr::ggboxplot(data=MaliauDFValidated,
-                  fill='Sound.Type',y='PowerDb',
-                  x ='recorder') +ylab('Receive levels')
-
 
 ggpubr::ggboxplot(data=observed.prop.lossMaliauSubset,
                   fill='Call.category',y='magic.x',
-                  x ='time') +ylab('Magic x')
+                  x ='distance') +ylab('Magic x')
 
