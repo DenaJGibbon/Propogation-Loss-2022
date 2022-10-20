@@ -271,7 +271,7 @@ bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,Rungan.lmm.pr
 summary(Rungan.lmm.prop.loss.full)
 hist(resid(Rungan.lmm.prop.loss.full.aru))
 RunganPropLoss <- sjPlot::plot_model(Rungan.lmm.prop.loss.full ,intercept=F,sort.est = TRUE)+ggtitle('Mungku Baru Propogation Loss')+theme_bw()+geom_hline(yintercept = 0)
-
+RunganPropLoss
 
 cowplot::plot_grid(MaliauPropLoss,RunganPropLoss)
 ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,

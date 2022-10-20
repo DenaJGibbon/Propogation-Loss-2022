@@ -279,7 +279,8 @@ Maliau.lmm.prop.loss.full <- lmer(magic.x ~ distance  + Species + TimeCat + (1|d
 Maliau.lmm.prop.loss.notime <- lmer(magic.x ~ distance  + Species  + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Maliau.lmm.prop.loss.nodistance <- lmer(magic.x ~  Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Maliau.lmm.prop.loss.full.cat <- lmer(magic.x ~ distance*Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Call.category + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Maliau.lmm.prop.loss.full.species <- lmer(magic.x ~ distance  + Species + TimeCat + (1|date), data=observed.prop.lossMaliauSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
 
 bbmle::AICctab(Maliau.lmm.prop.loss.null,Maliau.lmm.prop.loss.full,Maliau.lmm.prop.loss.full.species,
@@ -289,6 +290,7 @@ summary(Maliau.lmm.prop.loss.full)
 hist(resid(Maliau.lmm.prop.loss.full))
 MaliauPropLoss <- sjPlot::plot_model(Maliau.lmm.prop.loss.full.species ,intercept=F,sort.est = TRUE)+ggtitle('Maliau Propogation loss')+ theme_bw()+geom_hline(yintercept = 0)
 MaliauPropLoss
+
 sjPlot::plot_model(Maliau.lmm.prop.loss.full,type='eff',intercept=F,sort.est = TRUE)
 
 

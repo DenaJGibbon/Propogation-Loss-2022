@@ -58,7 +58,7 @@ Combined.lmm.prop.loss.full <- lmer(magic.x ~ distance + habitat + Species + Tim
 Combined.lmm.prop.loss.notime <- lmer(magic.x ~ distance + habitat + Species  + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmm.prop.loss.nohabitat <- lmer(magic.x ~ distance  + Species + TimeCat +(1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmm.prop.loss.nodistance <- lmer(magic.x ~  habitat + Species + TimeCat + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Combined.lmm.prop.loss.interaction <- lmer(magic.x ~  habitat*Species + TimeCat + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Combined.lmm.prop.loss.interaction <- lmer(magic.x ~  habitat*Species+ TimeCat + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmm.prop.loss.habitatonly <- lmer(magic.x ~  habitat + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Combined.lmm.prop.loss.habitatdist <- lmer(magic.x ~  habitat + distance + (1|date), data=PropogationLossModelingDFCompDist) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
@@ -68,7 +68,15 @@ bbmle::AICctab(Combined.lmm.prop.loss.null,Combined.lmm.prop.loss.full,Combined.
 
 hist(resid(Combined.lmm.prop.loss.full ))
 
-sjPlot::plot_model(Combined.lmm.prop.loss.interaction ,intercept=F,sort.est = TRUE)
+sjPlot::plot_model(Combined.lmm.prop.loss.full,intercept=F,sort.est = TRUE, rm.terms = "distance")+ggtitle('Combined Maliau and Mungku Baru')+
+  theme_bw()+geom_hline(yintercept=0,color='black')
+
+ggboxplot(data=PropogationLossModelingDFCompDist,x='habitat',y='magic.x',fill='habitat')
+  
+sjPlot::plot_model(Combined.lmm.prop.loss.interaction, type='pred')
+
+25*log10(2)
+32.5*log10(2)
 
 ggboxplot(data=PropogationLossModelingDFCompDist,x='Call.category',y='magic.x',fill ='habitat',
           outlier.shape = NA)+ylab('Propagation loss')

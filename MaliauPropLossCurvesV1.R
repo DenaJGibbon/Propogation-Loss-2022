@@ -1,6 +1,6 @@
-
+library(plyr)
 # Prop loss curves -----------------------------------------------------------------
-observed.prop.lossMaliauGibbons <- read.csv('observed.prop.lossMaliauAugust4.csv')
+observed.prop.lossMaliauGibbons <- observed.prop.lossMaliau #read.csv('observed.prop.lossMaliauAugust4.csv')
 
 # Gibbon prop loss --------------------------------------------------------
 
@@ -48,7 +48,7 @@ for(d in 1:length(uniquegibbons)){
   
   gibbonpropdBMaliauCI <- gibbonpropdBMaliau %>%
     group_by(X) %>%
-    summarise(meangibbon = mean(Value, na.rm = TRUE),
+    dplyr::summarise(meangibbon = mean(Value, na.rm = TRUE),
               sdgibbon = sd(Value, na.rm = TRUE),
               ngibbon = n()) %>%
     mutate(segibbon = sdgibbon / sqrt(ngibbon),
