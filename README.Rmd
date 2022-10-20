@@ -1,0 +1,26 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Propogation-Loss-2022
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+This is the repository for the the cross-site Borneo propagation loss study. 
+
+Script functionalities include:
+- processing sound data using Raven selection tables (RunganPropogationLoss and MaliauPropagationLoss)
+- calculating propagation loss and model selection (Rungan/Maliau Prop Loss and Modeling)
+- plotting background noise levels
+
+
