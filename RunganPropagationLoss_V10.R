@@ -15,6 +15,7 @@
 # Version 7. Add noise analysis in 1/3 octave bands
 # Version 8. Shift C. Kalimantan orang pulse frequency down; omit non primate annotations
 # Version 9. Add adaptive noise back in
+# Version 10. Add adaptive noise back in; take .25 quantile noise
 
 # Part 1. Load necessary packages -------------------------------------------------------------
 library(seewave)
@@ -59,14 +60,14 @@ thirdoctaveband.data <-read.csv("/Users/denaclink/Desktop/RStudio Projects/Propa
 thirdoctaveband.data <- thirdoctaveband.data[10:28,]
 
 # Set duration of the noise selection before the start of the actual selection
-timesecs <- 10
+timesecs <- 5
 
 # Set a buffer duration before and after selection to calculate inband power
 # NOTE: Right now it is set to zero so it cuts the selection right at the boundaries of the selection table
 signal.time.buffer <- 0
 
 # Set the duration of the noise subsamples (in seconds)
-noise.subsamples <- 0.5
+noise.subsamples <- 0.25
 
 # Set microphone gain
 gain <- 40
@@ -161,10 +162,10 @@ file.name.index <- unique(combined.template.table.test.add.dist$Loc_Name)
 # Create an empty dataframe to add to iteratively in the loop
 BackgroundNoiseRemovedDFRungan <- data.frame()
 
-ThirdOctaveBandDFRungan <- data.frame()
+#ThirdOctaveBandDFRungan <- data.frame()
 
 # The loop to calculate inband power (after subtracting the noise) for each selection from the wave file
-for(b in 1:length(file.name.index)){tryCatch({
+for(b in 9:length(file.name.index)){tryCatch({
   
   # Subset by recorder and date index
   combined.playbacks <- subset(combined.template.table.test.add.dist,Loc_Name==file.name.index[b])
@@ -179,6 +180,13 @@ for(b in 1:length(file.name.index)){tryCatch({
    singleplayback.df <- 
     singleplayback.df[-PulsesToRemove,]
   
+  if( nrow(singleplayback.df)==26  ){
+  singleplayback.df$Call.type <- SelectionIDsRungan$Sound.Type[1:nrow(singleplayback.df)]
+  } else{
+    singleplayback.df$Call.type <- SelectionIDsRungan$Sound.Type
+    
+  }
+   
   # Create sound file path
   soundfile <- str_split_fixed(singleplayback.df$file.name[1],pattern = '_',n=2)[,2]
   soundfile <- str_split_fixed(soundfile,pattern = '-',n=2)[,1]
@@ -300,13 +308,13 @@ for(b in 1:length(file.name.index)){tryCatch({
       NoiseWav1 <- cutw(wavfile.temp, from= Selectiontemp$Begin.Time..s. - timesecs,
                         to=Selectiontemp$Begin.Time..s., output='Wave')
       
-      NoiseWav2 <- cutw(wavfile.temp, from= Selectiontemp$Begin.Time..s.,
-                        to= Selectiontemp$Begin.Time..s. + timesecs, output='Wave')
+      NoiseWav2 <- cutw(wavfile.temp, from= Selectiontemp$End.Time..s.,
+                        to= Selectiontemp$End.Time..s. + timesecs, output='Wave')
       
       NoiseWavList <- list(NoiseWav1,NoiseWav2)
       
       noise.value.list <- list()
-      
+      noise.location.list <- list()
       for(e in 1:length(NoiseWavList)){
         
         # Take the corresponding noise file
@@ -325,7 +333,7 @@ for(b in 1:length(file.name.index)){tryCatch({
         w.dn.filt <- NoiseWavetemp
         
         # Calculate the duration of the sound file
-        dur.seconds <- duration(w.dn.filt)
+        dur.seconds <- seewave::duration(w.dn.filt)
         
         # Divide into evenly spaced bins (duration specified above)
         bin.seq <- seq(from=0, to=dur.seconds, by=noise.subsamples)
@@ -342,7 +350,6 @@ for(b in 1:length(file.name.index)){tryCatch({
         
         # Calculate noise for each noise time bin 
         noise.list <- list()
-        
         for (k in 1:length(subsamps.1sec)) { 
           
           # Read in .wav file 
@@ -362,12 +369,49 @@ for(b in 1:length(file.name.index)){tryCatch({
           
         }
         
+        
         # Take the minimum value from the noise samples
-        noise.value.list[[e]] <- min(unlist(noise.list))
+        noise.value.list[[e]] <- quantile(unlist(noise.list),.25)
+        noise.location.list[[e]] <- bin.seq[which(unlist(noise.list) <= quantile(unlist(noise.list),.25))]
+      }
+      
+      
+      noise.value <- min(unlist(noise.value.list))
+      
+      
+      noise.index <- which.min(unlist(noise.value.list))
+      wavdur <-  Selectiontemp$End.Time..s.- Selectiontemp$Begin.Time..s.
+      # NumTimeWindows <- wavdur/noise.subsamples
+      # noise.value <- NumTimeWindows*noise.value
+      
+      # Make spectrograms to check noise
+      wavtemp <- ListofWavs[[d]]
+      wavtemp@left <- c(NoiseWav1@left,wavtemp@left,NoiseWav2@left)
+      temp.spec <- signal::specgram(wavtemp@left, Fs = wavtemp@samp.rate, 
+                                    n = 1600, overlap = 0)
+      
+      # normalize and rescale to dB
+      P <- abs(temp.spec$S)
+      P <- P/max(P)
+      temp.spec$S <- P
+      
+      pdf(paste('NoiseSpectrograms5sec25msRungan/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
+      plot(temp.spec, xlab = "", ylab = "", ylim = c(200, 2500),# (matlab::jet.colors(255)) ,
+           axes=T,useRaster = TRUE,main=paste(file.name.index.sorted[b],d,Selectiontemp$Sound.Type ))
+      if(noise.index==1){
+        abline(v= unlist(noise.location.list)[1],col='red' )
+        abline(v= unlist(noise.location.list)[1]+noise.subsamples,col='red' )
+      }
+      
+      if(noise.index==2){
+        abline(v= unlist(noise.location.list)[2]+timesecs+wavdur,col='red' )
+        abline(v= unlist(noise.location.list)[2]+noise.subsamples+timesecs+wavdur+noise.subsamples,col='red' )
         
       }
       
-      noise.value <- median(unlist(noise.value.list))
+      rect(timesecs, Selectiontemp$Low.Freq..Hz., (timesecs+wavdur), Selectiontemp$High.Freq..Hz.,col='NA')
+      graphics.off()
+      
       
       # Isolate the corresponding .wav file for the playback selection
       SignalWavtemp <-  ListofWavs[[d]]
@@ -401,7 +445,7 @@ for(b in 1:length(file.name.index)){tryCatch({
       
       # Combine into a dataframe
       BackgroundNoiseRemovedDFRungan <- rbind.data.frame(BackgroundNoiseRemovedDFRungan,Selectiontemp)
-      write.csv(BackgroundNoiseRemovedDFRungan,'BackgroundNoiseRemovedDFRunganAugust102022adaptive.csv',row.names = F)
+      write.csv(BackgroundNoiseRemovedDFRungan,'BackgroundNoiseRemovedDFRunganAugust2720225min25msChar.csv',row.names = F)
     }
 
     
@@ -433,7 +477,7 @@ BackgroundNoiseRemovedDFRungan_char3$Sound.Type <- SelectionIDsRungan$Sound.Type
 #BackgroundNoiseRemovedDFRungan <- subset(BackgroundNoiseRemovedDFRungan,Loc_Name != 'char3')
 CombinedDF <-rbind.data.frame(BackgroundNoiseRemovedDFRungan,BackgroundNoiseRemovedDFRungan_char1,BackgroundNoiseRemovedDFRungan_char2,BackgroundNoiseRemovedDFRungan_char3)
 
-write.csv(CombinedDF,'BackgroundNoiseRemovedDFRunganAugust102022adaptiveCombinedDF.csv',row.names = F)
+write.csv(CombinedDF,'BackgroundNoiseRemovedDFRunganAugust272022adaptiveCombinedDF.csv',row.names = F)
 
 # Part 5. Propagation Loss --------------------------------------------------------
 
