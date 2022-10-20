@@ -22,7 +22,7 @@ se <- function(x) sqrt(var(x,na.rm=TRUE)/length(na.omit(x)))
 
 
 RunganNoise <-
-  read.csv("ThirdOctaveBandDFRunganRungan.csv")
+  read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/ThirdOctaveBandDFRunganAugust1.csv")
 
 # Match .wav file and habitat
 RunganMetaData <- read.csv('PropLoss_test_7Jul22.csv')
@@ -46,7 +46,7 @@ RunganNoiseAddHabitat <- subset(RunganNoiseAddHabitat, time > 5 & time < 17)
 
 RunganNoiseMedian <- RunganNoiseAddHabitat %>%
   group_by(habitat,time,center.freq) %>%
-  summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
+  dplyr::summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
             ambient.noise.low=meandB(noise.valuedb)-se(noise.valuedb),
             ambient.noise=meandB(noise.valuedb))
 
@@ -61,15 +61,15 @@ RunganNoisePlot <- ggplot(RunganNoiseMedian,aes(center.freq,ambient.noise,
   stat_summary(data=RunganNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=time))+
   stat_summary(data=RunganNoiseMedian,fun.y=meandB,geom="line",aes(group=time))+
   geom_ribbon(data=RunganNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-                                         ,fill=time,group=time,color=NULL),alpha=0.5)+ 
+                                         ,fill=time,group=time,color=NULL),alpha=0.25)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(RunganNoiseMedian$time))) )+ theme_bw()+
-  scale_color_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ theme_bw()#+ylim(25,70)
+  scale_color_manual(values= matlab::jet.colors(length(unique(RunganNoiseMedian$time))) )+ theme_bw()#+ylim(25,70)
 #+ylim(25,70)
 
 table(RunganNoiseMedian$time)
 
 MaliauNoise <-
-  read.csv("ThirdOctaveBandDFMaliau.csv")
+  read.csv("/Users/denaclink/Desktop/RStudio Projects/Propogation-Loss-2022/ThirdOctaveBandDFMaliauAddtimeswith20.csv")
 
 MaliauNoise$time <- str_split_fixed(MaliauNoise$wav.file,pattern='_',n=3)[,3]
 MaliauNoise$time <- as.numeric(substr(MaliauNoise$time,1,2))
@@ -78,11 +78,13 @@ recorders <- str_split_fixed(MaliauNoise$wav.file,pattern = '_',n=3)[,1]
 
 # Remove close weird ones
 MaliauNoise <-
-  MaliauNoise[-which(recorders=='M1' |recorders=='M2' | recorders=='M3'| recorders=='M4'| recorders=='M5'  ),]
+  MaliauNoise[which(recorders=='M6' |recorders=='M7' | recorders=='M8' ),]
+
+head(MaliauNoise)
 
 MaliauNoiseMedian <- MaliauNoise %>%
   group_by(time,center.freq) %>%
-  summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
+  dplyr::summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
             ambient.noise.low=meandB(noise.valuedb)-se(noise.valuedb),
             ambient.noise=meandB(noise.valuedb))
 
@@ -94,7 +96,7 @@ MaliauNoisePlot <- ggplot(MaliauNoiseMedian,aes(center.freq,ambient.noise,
   stat_summary(data=MaliauNoiseMedian,fun.y=meandB,geom="line",alpha=0.2,aes(group=time))+
   stat_summary(data=MaliauNoiseMedian,fun.y=meandB,geom="line",aes(group=time))+
   geom_ribbon(data=MaliauNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-                                  ,fill=time,group=time,color=NULL),alpha=0.5)+ 
+                                  ,fill=time,group=time,color=NULL),alpha=0.25)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(MaliauNoise$time))) )+ theme_bw()#+ylim(25,70)
 
@@ -109,7 +111,7 @@ CombinedNoise <-
 
 CombinedNoiseMedian <- CombinedNoise %>%
   group_by(habitat,center.freq) %>%
-  summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
+  dplyr::summarise(ambient.noise.high=meandB(noise.valuedb)+se(noise.valuedb),
             ambient.noise.low=meandB(noise.valuedb)-se(noise.valuedb),
             ambient.noise=meandB(noise.valuedb))
 
@@ -133,8 +135,8 @@ ggplot(CombinedNoiseMedian,aes(center.freq,ambient.noise,
                                group=habitat,colour=habitat,linetype=habitat))+
   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat),lwd=1)+
   stat_summary(data=CombinedNoiseMedian,fun.y=meandB,geom="line",aes(group=habitat))+
-  # geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
-  #                                          ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
+   geom_ribbon(data=CombinedNoiseMedian,aes(ymin=ambient.noise.low,ymax=ambient.noise.high
+                                           ,fill=habitat,group=habitat,color=NULL),alpha=0.5)+ 
   scale_fill_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   scale_color_manual(values= matlab::jet.colors(length(unique(CombinedNoise$habitat))) )+ 
   theme_bw()+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))+
@@ -209,9 +211,9 @@ bbmle::AICctab(Combined.lmerm.prop.loss.null,Combined.lmerm.prop.loss.center.fre
 
 hist(resid(Combined.lmerm.prop.loss.interaction))
 
-CombinedNoiseMedian500 <- subset(CombinedNoiseMedian,center.freq==250 |center.freq==500 |
+CombinedNoiseMedian500 <- subset(CombinedNoiseMedian,center.freq==250 |center.freq==500 |center.freq==500 | center.freq==1250 |
                                    center.freq==1600)
 
-ggboxplot(data=CombinedNoiseMedian500,x='habitat',y='ambient.noise',
+ggboxplot(data=CombinedNoiseMedian,x='habitat',y='ambient.noise',
           fill  = 'center.freq',outlier.shape = NA)+xlab('Habitat')+ylab(expression(paste('Ambient sound level (dB re 20', mu,'Pa)',sep=' ')))
 
