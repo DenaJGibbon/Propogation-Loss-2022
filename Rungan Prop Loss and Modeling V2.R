@@ -258,13 +258,12 @@ levels(observed.prop.lossRunganSubset$Call.category)
 Rungan.lmm.prop.loss.null <- lmer(magic.x ~  (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.full <- lmer(magic.x ~ distance + habitat + Species + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.full.aru <- lmer(magic.x ~ distance + habitat+Species + TimeCat + (1|Loc_Name)+ (1|ARU_ID), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.full.inter <- lmer(magic.x ~ distance + habitat+Species + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-
+Rungan.lmm.prop.loss.full.inter <- lmer(magic.x ~ distance + habitat +Species*TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.notime <- lmer(magic.x ~ distance + habitat + Species  + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.nohabitat <- lmer(magic.x ~ distance  + Species + TimeCat +(1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 Rungan.lmm.prop.loss.nodistance <- lmer(magic.x ~  habitat + Species + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
-bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,Rungan.lmm.prop.loss.full.aru,Rungan.lmm.prop.loss.full.inter,
+bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,Rungan.lmm.prop.loss.full.aru,
                Rungan.lmm.prop.loss.notime,Rungan.lmm.prop.loss.nohabitat,Rungan.lmm.prop.loss.nodistance, weights=T)
 
 
@@ -289,3 +288,5 @@ ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
 ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
                   x='distance',y='actual.receive.level',fill='Call.category')+ylab('Propagation Loss')+
   xlab('Distance (log)')
+
+table(observed.prop.lossRunganSubset$TimeCat)
