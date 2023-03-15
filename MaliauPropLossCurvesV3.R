@@ -1,7 +1,7 @@
 library(plyr)
 library(ggplot2)
 # Prop loss curves -----------------------------------------------------------------
-observed.prop.lossMaliauGibbons <- droplevels(subset(observed.prop.lossMaliauSubset,
+observed.prop.lossMaliauGibbons <- droplevels(subset(observed.prop.lossMaliauOutRM,
                                           Species != "OrangSabah"))#read.csv('observed.prop.lossMaliauAugust4.csv')
 
 # Gibbon prop loss --------------------------------------------------------
@@ -15,7 +15,7 @@ gibbondB <- 107.1
 gibbondB <- 113.9
 
 gibbonplotlist <- list()
-
+CombgibbonpropdBMaliau <- data.frame()
 for(d in 1:length(uniquegibbons)){
   
   observed.prop.lossMaliaugibbonstemp <- subset(observed.prop.lossMaliauGibbons,Species==uniquegibbons[d])
@@ -44,7 +44,8 @@ for(d in 1:length(uniquegibbons)){
     
     scaledB <- gibbondB - Estimated1$Value[2] 
     Estimated1$Value <- scaledB+Estimated1$Value
-    newtemprow <- rbind.data.frame(Estimated1,temp.magicx.row$Call.category)
+    
+    newtemprow <- cbind.data.frame(Estimated1,temp.magicx.row$Species,temp.magicx.row$playback.num)
     
     gibbonpropdBMaliau <- rbind.data.frame(gibbonpropdBMaliau,newtemprow)
   }
@@ -63,6 +64,10 @@ for(d in 1:length(uniquegibbons)){
   
   
   noise.val <- median(unlist(gibbonNoisedf))
+  TempRow$detect.log.distance <- 
+    which.min(abs(Estimated1$Value - Temp.background))
+  
+  
   senoise = sd(unlist(gibbonNoisedf)) / sqrt(length(gibbonNoisedf))
   gibbonpropdBMaliauCI$lower.cinoise = noise.val - qt(1 - (0.05 / 2), length(gibbonNoisedf) - 1) * senoise
   gibbonpropdBMaliauCI$upper.cinoise = noise.val + qt(1 - (0.05 / 2), length(gibbonNoisedf) - 1) * senoise

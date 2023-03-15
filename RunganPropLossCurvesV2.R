@@ -210,4 +210,4 @@ for(d in 1:length(uniqueOrangutanRungans)){
 cowplot::plot_grid(OrangutanRunganplotlistComb[[1]][[1]],OrangutanRunganplotlistComb[[1]][[2]],
                    OrangutanRunganplotlistComb[[1]][[3]],
                    OrangutanRunganplotlistComb[[2]][[1]],OrangutanRunganplotlistComb[[2]][[2]],
-                   OrangutanRunganplotlistComb[[2]][[3]])
+                   OrangutanRunganplotlistComb[[2]][[3]],labels=c('A','B','C','D','E','F','G','H'),label_x = 0.9)

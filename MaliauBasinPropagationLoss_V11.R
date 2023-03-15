@@ -11,7 +11,7 @@
 # Version 8. Add back adaptive noise
 # Version 9. Shift frequency of trill down to avoid background noise
 # Version 10. Add signal without background noise removed; remove .25 quantile noise
-# Version 11. Add back in P. morio
+# Version 11. Add back in P. morio; clean up for publication
 
 # Part 1. Load necessary packages -------------------------------------------------------------
 library(seewave)
@@ -76,7 +76,7 @@ gain <- 40
 # Calculate the microphone sensitivity for the system
 Sensitivity <- -137.9794 + gain - 0.9151 # dB relative to 1 volt per pascal
 
-# Set distance of first recorder to playback speaker (in meters)
+# Set distance (hypotenuse) of first recorder to playback speaker (in meters)
 dist.to.playback <- 26.4
 
 # Read in selection tables with full file path names
@@ -252,84 +252,6 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
                                                                  to= (singleplayback.df$End.Time..s.[x]+signal.time.buffer), output='Wave'))
 
 
-  # 
-  # for(m in 1:nrow(thirdoctaveband.data)){
-  #   OctaveBandnoiselist <- list()
-  #   # Calculate noise in 1/3 octave bands
-  #   print('Calculating noise for 1/3 octave bands')
-  #   for(l in 1:length(NoiseWavList)){
-  #    
-  #     # Take the corresponding noise file
-  #     NoiseWavetemp <- NoiseWavList[[l]]
-  #     
-  #     
-  #     # Filter to the frequency range of the selection
-  #     filteredwaveform<- bwfilter(NoiseWavetemp, 
-  #                                 from=thirdoctaveband.data[m,]$low.freq, 
-  #                                 to=thirdoctaveband.data[m,]$high.freq,
-  #                                 n=3)
-  #     
-  #     # Add the filtered waveform back into the .wav file
-  #     NoiseWavetemp@left <- c(filteredwaveform)
-  #     
-  #     # Assign a new name
-  #     w.dn.filt <- NoiseWavetemp
-  #     
-  #     # Calculate the duration of the sound file
-  #     dur.seconds <- seewave::duration(w.dn.filt)
-  #     
-  #     # Divide into evenly spaced bins (duration specified above)
-  #     bin.seq <- seq(from=0, to=dur.seconds, by=noise.subsamples)
-  #     
-  #     # Create a list of all the noise subsample bins to estimate noise
-  #     bin.seq.length <- length(bin.seq)-1
-  #     
-  #     # Create a list of shorter sound files to calculate noise
-  #     subsamps.1sec <- lapply(1:bin.seq.length, function(i) 
-  #       extractWave(w.dn.filt, 
-  #                   from=as.numeric(bin.seq[i]), to=as.numeric(bin.seq[i+1]), 
-  #                   xunit = c("time"),plot=F,output="Wave"))
-  #     
-  #     
-  #     
-  #     # Calculate noise for each noise time bin 
-  #     noise.list <- list()
-  #     
-  #     for (k in 1:length(subsamps.1sec)) { 
-  #       
-  #       # Read in .wav file 
-  #       temp.wave <- subsamps.1sec[[k]]
-  #       
-  #       # Normalise the values 
-  #       data <- (temp.wave@left) / (2 ^ 16/2)
-  #       
-  #       # Calibrate the data with the microphone sensitivity
-  #       data_cal <- data/ (10^(Sensitivity/20))
-  #       
-  #       # Calculate RMS
-  #       data_rms <- rms(data_cal)
-  #       
-  #       
-  #       noise.list[[k]] <- data_rms
-  #       
-  #     }
-  #     
-  #     OctaveBandnoiselist[[l]] <-  
-  #       quantile(unlist(noise.list), probs = 0.1)  
-  #     
-  #   }
-  #   
-  #   noise.value <- median(unlist(OctaveBandnoiselist))
-  #   noise.valuedb <- 20 * log10((noise.value))
-  #   print(noise.valuedb)
-  #   temp.noise.df <- cbind.data.frame(short.wav,thirdoctaveband.data[m,]$center.freq,thirdoctaveband.data[m,]$high.freq,noise.valuedb,l)
-  #   colnames(temp.noise.df) <- c('wav.file','center.freq','high.freq','noise.valuedb','noise.file')
-  #   ThirdOctaveBandDF <- rbind.data.frame(ThirdOctaveBandDF,temp.noise.df)
-  #   write.csv(ThirdOctaveBandDF,'ThirdOctaveBandDFMaliauAddtimeswith20.csv')
-  #   
-  # }
-  
-
   # Matches each selection with the corresponding noise and selection .wav file and calculate absolute receive level
   for(d in 1:nrow(singleplayback.df)){
     
@@ -417,38 +339,7 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
    
    noise.index <- which.min(unlist(noise.value.list))
    wavdur <-  Selectiontemp$End.Time..s.- Selectiontemp$Begin.Time..s.
-  # NumTimeWindows <- wavdur/noise.subsamples
-  # noise.value <- NumTimeWindows*noise.value
-   
-   # Make spectrograms to check noise
-   #wavtemp <- ListofWavs[[d]]
-  #  wavtemp@left <- c(NoiseWav1@left,wavtemp@left,NoiseWav2@left)
-  #  temp.spec <- signal::specgram(wavtemp@left, Fs = wavtemp@samp.rate, 
-  #                                n = 1600, overlap = 0)
-  #  
-  #  # normalize and rescale to dB
-  #  P <- abs(temp.spec$S)
-  #  P <- P/max(P)
-  #  temp.spec$S <- P
-  #  
-  #  pdf(paste('NoiseSpectrograms5sec25msRungan/',file.name.index.sorted[b],d,a,Selectiontemp$Sound.Type,'.pdf' ),width=10)
-  #  plot(temp.spec, xlab = "", ylab = "", ylim = c(200, 2500),# (matlab::jet.colors(255)) ,
-  #       axes=T,useRaster = TRUE,main=paste(file.name.index.sorted[b],d,Selectiontemp$Sound.Type ))
-  #  if(noise.index==1){
-  #  abline(v= unlist(noise.location.list)[1],col='red' )
-  #  abline(v= unlist(noise.location.list)[1]+noise.subsamples,col='red' )
-  #  }
-  #  
-  # if(noise.index==2){
-  #   abline(v= unlist(noise.location.list)[2]+timesecs+wavdur,col='red' )
-  #   abline(v= unlist(noise.location.list)[2]+noise.subsamples+timesecs+wavdur+noise.subsamples,col='red' )
-  #   
-  #    }
-  #  
-  #  rect(timesecs, Selectiontemp$Low.Freq..Hz., (timesecs+wavdur), Selectiontemp$High.Freq..Hz.,col='NA')
-  #  graphics.off()
-  #  
-    
+
    # Isolate the corresponding .wav file for the playback selection
    SignalWavtemp <-  ListofWavs[[d]]
       
@@ -483,7 +374,7 @@ for(b in 1:length(file.name.index.sorted)){ tryCatch({
       
       # Combine into a dataframe
       BackgroundNoiseRemovedDFMaliau <- rbind.data.frame(BackgroundNoiseRemovedDFMaliau,Selectiontemp)
-      write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauSept625thNoiseAddPMorio.csv',row.names = F)
+      write.csv(BackgroundNoiseRemovedDFMaliau,'BackgroundNoiseRemovedMaliauFeb2023.csv',row.names = F)
   }
   
   }
@@ -499,7 +390,7 @@ rm(filteredwaveformdownsample2)
 }
 
 
-BackgroundNoiseRemovedDFMaliau <- read.csv("BackgroundNoiseRemovedMaliauAugust9AdaptiveNoise.csv")
+#BackgroundNoiseRemovedDFMaliau <- read.csv("BackgroundNoiseRemovedMaliauAugust9AdaptiveNoise.csv")
 
 # Part 5. Propagation Loss --------------------------------------------------------
 

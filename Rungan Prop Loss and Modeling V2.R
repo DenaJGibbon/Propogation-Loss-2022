@@ -31,11 +31,11 @@ PulsesToRemove <- which(TempSoundType!="Hf" & TempSoundType!="Ha"
 
 PlaybackSeq <- seq(1,nrow(SelectionIDsRungan),1)
 
-PlaybackSeqUpdated <- PlaybackSeq[-PulsesToRemove]
+
 SelectionIDsRungan <- SelectionIDsRungan[-PulsesToRemove,]
 
 #NOTE that there are two Pwur call types
-RunganDF <- read.csv('BackgroundNoiseRemovedDFRunganAugust272022adaptiveCombinedDF.csv')
+RunganDF <- read.csv('BackgroundNoiseRemovedDFRunganFeb2023adaptiveCombinedDF.csv')
 PredictedSpreading <- read.csv("/Users/denaclink/Desktop/RStudio Projects/Propagation-Loss-2020-2021/Predicted_dB_Spherical.csv")
 PredictedSpreadingRungan <- subset(PredictedSpreading,Site=='Munkgu')
 
@@ -188,7 +188,9 @@ for(z in 1:length(Loc_Name.index)) { #tryCatch({
 }
 
 unique(observed.prop.lossRungan$Loc_Name)
+unique(observed.prop.lossRungan$habitat)
 table(observed.prop.lossRungan$time)
+table(observed.prop.lossRungan$Sound.type)
 
 # Remove PBs
 observed.prop.lossRungan <- droplevels(subset(observed.prop.lossRungan,playback.num!=1))
@@ -198,6 +200,8 @@ observed.prop.lossRungan$Call.category <- str_split_fixed(observed.prop.lossRung
 observed.prop.lossRunganSubset <- observed.prop.lossRungan #subset(observed.prop.lossRungan,Sound.type=="1_Pmor_P2" |Sound.type== "1_Hfunstart")
 ggscatter(data=observed.prop.lossRunganSubset, y='distance',
           x='magic.x',color = 'Call.category',facet.by = 'habitat')#+geom_jitter(width = 1.5, height = 1)
+ggboxplot(data=observed.prop.lossRunganSubset, y='magic.x',
+          x='Call.category',color = 'Call.category',facet.by = 'habitat')#+geom_jitter(width = 1.5, height = 1)
 
 
 # Modeling ----------------------------------------------------------------
@@ -230,63 +234,124 @@ observed.prop.lossRunganSubset$site <- rep('Rungan',nrow(observed.prop.lossRunga
 observed.prop.lossRunganSubset$distance  <- sqrt(10^2 + observed.prop.lossRunganSubset$distance ^2) 
 
 
-observed.prop.lossRunganSubset$distance <- log10(observed.prop.lossRunganSubset$distance)
+observed.prop.lossRunganSubset$log.distance <- log10(observed.prop.lossRunganSubset$distance)
 
 observed.prop.lossRunganSubset <- na.omit(observed.prop.lossRunganSubset)
 
-outliers <- boxplot.stats(observed.prop.lossRunganSubset$magic.x)$out
+# observed.prop.lossRunganSubset <-  subset(observed.prop.lossRunganSubset,
+#                                             distance < 500)
 
-out_ind <- which(observed.prop.lossRunganSubset$magic.x %in% c(outliers))
-out_ind
-
-
-# Subset removing outliers
-observed.prop.lossRunganSubset <-  observed.prop.lossRunganSubset[-out_ind,]
-
-# Do we still need this?? characterize propagation loss as a function of frequency & distance at each site ------------------
-## Build 2 models: 1 for Maliau, 1 for Rungan
+# Call_distRungan <- unique(paste(observed.prop.lossRunganSubset$Call.category,
+#                           observed.prop.lossRunganSubset$distance, sep='_'))
+# 
+# observed.prop.lossRunganOutRM <- data.frame()
+# for(b in 1:length(Call_distRungan)){
+#   print(b)
+#   TempSubVals <- str_split_fixed(Call_distRungan[b],pattern = '_',n=2)
+#   TempDF <- subset(observed.prop.lossRunganSubset,
+#                    Call.category==TempSubVals[1] & distance==TempSubVals[2])
+#   outliers <- boxplot.stats(TempDF$magic.x)$out
+#   IndexRM <- which(TempDF$magic.x %in% outliers)
+#   TempDF <- TempDF[-IndexRM,]
+#   
+#   observed.prop.lossRunganOutRM <- rbind.data.frame(observed.prop.lossRunganOutRM,TempDF)
+# }
+# 
+# 
+# hist(observed.prop.lossRunganOutRM$magic.x)
+observed.prop.lossRunganOutRM <- observed.prop.lossRunganSubset
+# Do we still need this?? characterize propagation loss as a function of frequency & log.distance at each site ------------------
+## Build 2 models: 1 for Rungan, 1 for Rungan
 ## Loss of dB from reference recorder = signal - noise of selection
 ## Frequency = (log) center frequency of selection
-## Distance = (log) distance from reference recorder
-observed.prop.lossRunganSubset$time <- as.factor(observed.prop.lossRunganSubset$time)
-observed.prop.lossRunganSubset$Loc_Name <- as.factor(observed.prop.lossRunganSubset$Loc_Name)
-observed.prop.lossRunganSubset$ARU_ID <- as.factor(observed.prop.lossRunganSubset$ARU_ID)
-observed.prop.lossRunganSubset$Call.category <- (as.factor(observed.prop.lossRunganSubset$Call.category))
-levels(observed.prop.lossRunganSubset$Call.category)
+## log.distance = (log) log.distance from reference recorder
+observed.prop.lossRunganOutRM$time <- as.factor(observed.prop.lossRunganOutRM$time)
+observed.prop.lossRunganOutRM$Loc_Name <- as.factor(observed.prop.lossRunganOutRM$Loc_Name)
+observed.prop.lossRunganOutRM$ARU_ID <- as.factor(observed.prop.lossRunganOutRM$ARU_ID)
+observed.prop.lossRunganOutRM$Call.category <- as.factor(observed.prop.lossRunganOutRM$Call.category)
+levels(observed.prop.lossRunganOutRM$Call.category)
+
+ggpubr::ggboxplot(data=observed.prop.lossRunganOutRM,
+                  fill='Call.category',y='dBdoubledist',
+                  x ='distance') 
+
 
 # Include recorder ID as random effect
-Rungan.lmm.prop.loss.null <- lmer(magic.x ~  (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.full <- lmer(magic.x ~ distance + habitat + Species + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.full.aru <- lmer(magic.x ~ distance + habitat+Species + TimeCat + (1|Loc_Name)+ (1|ARU_ID), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.full.inter <- lmer(magic.x ~ distance + habitat +Species*TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.notime <- lmer(magic.x ~ distance + habitat + Species  + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.nohabitat <- lmer(magic.x ~ distance  + Species + TimeCat +(1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
-Rungan.lmm.prop.loss.nodistance <- lmer(magic.x ~  habitat + Species + TimeCat + (1|Loc_Name), data=observed.prop.lossRunganSubset) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.null <- lmer(dBdoubledist ~  (1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.full <- lmer(dBdoubledist ~ log.distance + habitat + Species + TimeCat + (1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.full.aru <- lmer(dBdoubledist ~ log.distance + habitat+Species + TimeCat + (1|Loc_Name/playback.num)+ (1|ARU_ID), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.full.inter <- lmer(dBdoubledist ~ log.distance + habitat +Species*TimeCat + (1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.notime <- lmer(dBdoubledist ~ log.distance + habitat + Species  + (1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.nohabitat <- lmer(dBdoubledist ~ log.distance  + Species  +(1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
+Rungan.lmm.prop.loss.nolog.distance <- lmer(dBdoubledist ~  habitat + Species + TimeCat + (1|Loc_Name/playback.num), data=observed.prop.lossRunganOutRM) # + (Call.Type|recorder.ID + Call.Type|recorder.location)
 
-bbmle::AICctab(Rungan.lmm.prop.loss.null,Rungan.lmm.prop.loss.full,Rungan.lmm.prop.loss.full.aru,
-               Rungan.lmm.prop.loss.notime,Rungan.lmm.prop.loss.nohabitat,Rungan.lmm.prop.loss.nodistance, weights=T)
+bbmle::AICctab(Rungan.lmm.prop.loss.null,
+               Rungan.lmm.prop.loss.full,
+               #Rungan.lmm.prop.loss.full.aru,
+               Rungan.lmm.prop.loss.notime,
+               Rungan.lmm.prop.loss.nohabitat,
+               Rungan.lmm.prop.loss.nolog.distance,
+               weights=T)
 
 
 summary(Rungan.lmm.prop.loss.full)
-hist(resid(Rungan.lmm.prop.loss.full.aru))
-RunganPropLoss <- sjPlot::plot_model(Rungan.lmm.prop.loss.full ,intercept=F,sort.est = TRUE)+ggtitle('Mungku Baru Propogation Loss')+theme_bw()+geom_hline(yintercept = 0)
+simulationOutputRungan <- simulateResiduals(fittedModel = Rungan.lmm.prop.loss.full, plot = F)
+plotQQunif(simulationOutputRungan)
+
+RunganPropLoss <- sjPlot::plot_model(Rungan.lmm.prop.loss.full  ,intercept=F,sort.est = F)+
+  ggtitle('Mungku Baru Propagation loss')+ theme_bw()+geom_hline(yintercept = 0)+ scale_color_manual(values=c('black','red'))
+
 RunganPropLoss
 
-cowplot::plot_grid(MaliauPropLoss,RunganPropLoss)
-ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
+PlotlistRungan <-sjPlot::plot_model(Rungan.lmm.prop.loss.full, type='pred',ci.lvl = 0.95)
+PlotlistRungan
+
+sjPlot::plot_model(Rungan.lmm.prop.loss.full, type='re')
+
+# Marginal effects tells us how a dependent variable (outcome) changes when a specific independent variable (explanatory variable) changes.
+RunganMarginalEffectsDist <- PlotlistRungan[[1]]+ylab('Propagation loss \n (dB decrease per doubling distance)')+
+  ggtitle('')+xlab('Log Distance')+theme_bw()
+
+RunganMarginalEffectsHabitat <- PlotlistRungan[[2]]+ylab('Propagation loss \n (dB decrease per doubling distance)')+
+  ggtitle('')+theme_bw()+xlab('Habitat')
+
+RunganMarginalEffectsSpecies <- PlotlistRungan[[3]]+ylab('Propagation loss \n (dB decrease per doubling distance)')+
+  ggtitle('')+theme_bw()
+
+RunganMarginalEffectsTime <- PlotlistRungan[[4]]+ylab('Propagation loss \n (dB decrease per doubling distance)')+
+  ggtitle('')+xlab('Time Category')+theme_bw()
+
+
+cowplot::plot_grid(RunganMarginalEffectsDist,
+                   RunganMarginalEffectsHabitat,
+                   RunganMarginalEffectsSpecies,
+                   RunganMarginalEffectsTime,
+                   labels=c('A','B','C'),label_x = 0.9)
+
+
+sjPlot::tab_model(Rungan.lmm.prop.loss.full)
+sjPlot::plot_model(Rungan.lmm.prop.loss.full,type='est',
+                                      intercept=F, ci.lvl = 0.95,sort.est = TRUE)+ggtitle('Mungku Baru Propagation loss')+ theme_bw()+geom_hline(yintercept = 0)
+
+cowplot::plot_grid(RunganPropLoss,RunganPropLoss,
+                   RunganMungkBaruComb,
+                   labels=c('A','B','C'))
+
+ggpubr::ggboxplot(data=observed.prop.lossRunganOutRM,
                   x='habitat',y='magic.x',fill='TimeCat')+ylab('Propagation Loss')+
   xlab('Habitat')
 
-ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
-                  x='habitat',y='magic.x',fill='habitat')+ylab('Propagation Loss')+
+observed.prop.lossRunganOutRM$log.distance.fact <- as.factor(observed.prop.lossRunganOutRM$log.distance)
+ggpubr::ggboxplot(data=observed.prop.lossRunganOutRM,
+                  x='habitat',y='magic.x',color  ='log.distance.fact')+ylab('Propagation Loss')+
   xlab('Habitat')
 
-ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
-                  x='distance',y='magic.x',fill='Call.category')+ylab('Propagation Loss')+
-  xlab('Distance (log)')
+ggpubr::ggboxplot(data=observed.prop.lossRunganOutRM,
+                  x='log.distance',y='magic.x',fill='Call.category')+ylab('Propagation Loss')+
+  xlab('log.distance (log)')
 
-ggpubr::ggboxplot(data=observed.prop.lossRunganSubset,
-                  x='distance',y='actual.receive.level',fill='Call.category')+ylab('Propagation Loss')+
-  xlab('Distance (log)')
+ggpubr::ggboxplot(data=observed.prop.lossRunganOutRM,
+                  x='log.distance',y='actual.receive.level',fill='Call.category')+ylab('Propagation Loss')+
+  xlab('log.distance (log)')
 
-table(observed.prop.lossRunganSubset$TimeCat)
+table(observed.prop.lossRunganOutRM$TimeCat)
